@@ -627,11 +627,11 @@
             height: 100%;
         }
         
-        /* Bubble Map Overlay */
+        /* Bubble Map Overlay - 移动到右上角 */
         .bubble-overlay {
             position: absolute;
             top: 20px;
-            left: 20px;
+            right: 20px; /* 从left改为right */
             z-index: 1000;
             background: rgba(255, 255, 255, 0.98);
             padding: 1.5rem;
@@ -779,6 +779,14 @@
                 max-width: 100%;
             }
             
+            .bubble-overlay {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 1rem;
+                max-width: 100%;
+            }
+            
             .detail-card.description {
                 grid-column: span 1;
             }
@@ -801,10 +809,6 @@
                 <h1><i class="fas fa-wind"></i> London Air Quality Monitoring Network</h1>
                 <p class="subtitle">Integrated dashboard showing 16 monitoring stations across London and their nitrogen oxides concentration data from December 2015 to December 2016.</p>
                 <div class="project-info">
-                    <div class="info-badge">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Study Period: 2010-2020</span>
-                    </div>
                     <div class="info-badge">
                         <i class="fas fa-map-marker-alt"></i>
                         <span>16 Monitoring Stations</span>
@@ -1106,7 +1110,7 @@
                     <p>Data Source: London Air Quality Network | Visualization for Data Storytelling Project</p>
                 </div>
                 <div>
-                    <p><i class="far fa-calendar"></i> Study Period: 2010-2020 | <i class="fas fa-map-marker-alt"></i> 16 Monitoring Stations | <i class="fas fa-chart-line"></i> NOx Data: 2015-2016</p>
+                    <p><i class="fas fa-map-marker-alt"></i> 16 Monitoring Stations | <i class="fas fa-chart-line"></i> NOx Data: 2015-2016</p>
                 </div>
             </div>
         </footer>
