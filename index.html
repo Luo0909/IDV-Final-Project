@@ -627,6 +627,79 @@
             height: 100%;
         }
         
+        /* Bubble Map Overlay */
+        .bubble-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            max-width: 320px;
+            border: 1px solid #e0e6ef;
+        }
+        
+        .bubble-overlay h3 {
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 0.8rem;
+            color: var(--primary-color);
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .bubble-legend {
+            background: white;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            margin-top: 15px;
+        }
+        
+        .bubble-legend h4 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .size-legend {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        
+        /* Bubble animation */
+        .bubble-highlighted {
+            filter: brightness(1.2);
+            stroke-width: 3;
+            stroke: white;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Bubble tooltip */
+        .bubble-tooltip {
+            font-size: 12px !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid var(--secondary-color) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            padding: 8px 10px !important;
+        }
+        
+        .bubble-tooltip::before {
+            border-top-color: var(--secondary-color) !important;
+        }
+        
         /* Footer */
         footer {
             text-align: center;
@@ -915,23 +988,47 @@
             <div class="tab-content" id="bubble-tab">
                 <div class="bubble-map-container">
                     <div id="bubble-map"></div>
-                    <div class="map-overlay">
-                        <h3><i class="fas fa-info-circle"></i> Bubble Map Guide</h3>
-                        <p>Bubble sizes indicate annual average concentration levels. Larger bubbles represent higher concentrations.</p>
-                        <div style="margin-top: 10px;">
-                            <h4>Bubble Size Legend:</h4>
-                            <div style="display: flex; align-items: center; margin-top: 5px;">
-                                <div style="width: 15px; height: 15px; border-radius: 50%; background-color: rgba(52, 152, 219, 0.6); margin-right: 8px;"></div>
-                                <span>Low Concentration</span>
+                    <div class="bubble-overlay">
+                        <h3><i class="fas fa-info-circle"></i> Annual Concentration Bubble Map</h3>
+                        <p><strong>Bubble Visualization:</strong> Each bubble represents a monitoring station. The <strong>size</strong> and <strong>color</strong> indicate the annual average NOx concentration.</p>
+                        
+                        <div class="bubble-legend">
+                            <h4><i class="fas fa-ruler"></i> Size Indicates Concentration Level:</h4>
+                            <p style="font-size: 13px; margin: 5px 0;"><strong>Larger bubbles = Higher annual average concentration</strong></p>
+                            <p style="font-size: 13px; margin: 5px 0;">Smaller bubbles = Lower annual average concentration</p>
+                            
+                            <div class="size-legend">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 60px; margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                    <div style="text-align: center;">
+                                        <div style="width: 15px; height: 15px; background: #3498db; border-radius: 50%; margin: 0 auto 5px;"></div>
+                                        <small>Low</small>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="width: 25px; height: 25px; background: #f39c12; border-radius: 50%; margin: 0 auto 5px;"></div>
+                                        <small>Medium</small>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="width: 35px; height: 35px; background: #e74c3c; border-radius: 50%; margin: 0 auto 5px;"></div>
+                                        <small>High</small>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="width: 45px; height: 45px; background: #c0392b; border-radius: 50%; margin: 0 auto 5px;"></div>
+                                        <small>Very High</small>
+                                    </div>
+                                </div>
                             </div>
-                            <div style="display: flex; align-items: center; margin-top: 5px;">
-                                <div style="width: 25px; height: 25px; border-radius: 50%; background-color: rgba(231, 76, 60, 0.6); margin-right: 8px;"></div>
-                                <span>Medium Concentration</span>
-                            </div>
-                            <div style="display: flex; align-items: center; margin-top: 5px;">
-                                <div style="width: 35px; height: 35px; border-radius: 50%; background-color: rgba(192, 57, 43, 0.8); margin-right: 8px;"></div>
-                                <span>High Concentration</span>
-                            </div>
+                            
+                            <!-- Dynamic legend will be inserted here -->
+                            <div id="bubble-size-legend"></div>
+                        </div>
+                        
+                        <div class="instructions" style="margin-top: 15px; padding: 10px; background: #e8f4fc; border-radius: 5px; font-size: 12px;">
+                            <p style="margin: 0;"><i class="fas fa-mouse-pointer"></i> <strong>How to use:</strong></p>
+                            <ul style="margin: 5px 0 0 15px; padding: 0;">
+                                <li>Click on any bubble or station in the list to see details</li>
+                                <li>Hover over bubbles to see exact concentration values</li>
+                                <li>Use mouse wheel to zoom in/out on the map</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -2124,6 +2221,16 @@
         
         // ==================== BUBBLE MAP FUNCTIONALITY ====================
         
+        // Initialize bubble map
+        const bubbleMap = L.map('bubble-map').setView([51.5074, -0.1278], 11);
+        
+        // Add Google Satellite layer (using OpenStreetMap as fallback)
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Map data © Google'
+        }).addTo(bubbleMap);
+        
         // Calculate annual averages for each station
         function calculateAnnualAverages() {
             const annualAverages = [];
@@ -2152,28 +2259,27 @@
             return annualAverages;
         }
         
-        // Initialize bubble map
-        const bubbleMap = L.map('bubble-map').setView([51.5074, -0.1278], 11);
-        
-        // Add Google Satellite layer (using OpenStreetMap as fallback)
-        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Map data © Google'
-        }).addTo(bubbleMap);
-        
         // Calculate annual averages
         const annualAverages = calculateAnnualAverages();
         
         // Find min and max values for scaling
-        const minAverage = Math.min(...annualAverages.map(item => item.average));
-        const maxAverage = Math.max(...annualAverages.map(item => item.average));
+        let minAverage = Infinity;
+        let maxAverage = -Infinity;
+        
+        annualAverages.forEach(item => {
+            if (item.average < minAverage) minAverage = item.average;
+            if (item.average > maxAverage) maxAverage = item.average;
+        });
+        
+        // Update bubble map overlay with actual data values
+        const bubbleOverlay = document.querySelector('.bubble-overlay');
+        const sizeLegendContainer = document.getElementById('bubble-size-legend');
         
         // Function to get bubble size based on average concentration
         function getBubbleSize(average) {
-            // Scale the bubble size between 15 and 40 based on average concentration
+            // Scale the bubble size between 15 and 45 based on average concentration
             const minSize = 15;
-            const maxSize = 40;
+            const maxSize = 45;
             
             if (maxAverage === minAverage) return (minSize + maxSize) / 2;
             
@@ -2203,6 +2309,89 @@
         
         // Create bubble layer
         const bubbleLayer = L.layerGroup().addTo(bubbleMap);
+        let currentBubble = null;
+        
+        // Create bubble legend with actual data values
+        function createBubbleLegend() {
+            // Clear previous legend
+            sizeLegendContainer.innerHTML = '';
+            
+            // Create 5 representative values for the legend
+            const legendValues = [
+                minAverage,
+                Math.round(minAverage + (maxAverage - minAverage) * 0.25),
+                Math.round(minAverage + (maxAverage - minAverage) * 0.5),
+                Math.round(minAverage + (maxAverage - minAverage) * 0.75),
+                maxAverage
+            ];
+            
+            // Create legend items
+            legendValues.forEach((value, index) => {
+                const size = getBubbleSize(value);
+                const color = getBubbleColor(value);
+                
+                const legendItem = document.createElement('div');
+                legendItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    margin: 8px 0;
+                    padding: 5px;
+                    border-radius: 5px;
+                    background: ${index % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent'};
+                `;
+                
+                legendItem.innerHTML = `
+                    <div style="
+                        width: ${size}px;
+                        height: ${size}px;
+                        min-width: ${size}px;
+                        min-height: ${size}px;
+                        border-radius: 50%;
+                        background-color: ${color};
+                        border: 2px solid white;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        margin-right: 10px;
+                    "></div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 13px; color: #333;">${value} μg/m³</div>
+                        <div style="font-size: 11px; color: #666;">Annual Average Concentration</div>
+                    </div>
+                `;
+                
+                sizeLegendContainer.appendChild(legendItem);
+            });
+            
+            // Add data summary
+            const dataSummary = document.createElement('div');
+            dataSummary.style.cssText = `
+                margin-top: 15px;
+                padding: 10px;
+                background-color: #f8f9fa;
+                border-radius: 5px;
+                font-size: 12px;
+                border-left: 3px solid var(--secondary-color);
+            `;
+            
+            dataSummary.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <i class="fas fa-chart-line" style="margin-right: 8px; color: var(--secondary-color);"></i>
+                    <span><strong>Data Range:</strong> ${minAverage} - ${maxAverage} μg/m³</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <i class="fas fa-ruler" style="margin-right: 8px; color: var(--secondary-color);"></i>
+                    <span><strong>Bubble Sizes:</strong> ${getBubbleSize(minAverage).toFixed(0)}px - ${getBubbleSize(maxAverage).toFixed(0)}px</span>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-palette" style="margin-right: 8px; color: var(--secondary-color);"></i>
+                    <span><strong>Color Gradient:</strong> Blue (Low) → Red (High)</span>
+                </div>
+            `;
+            
+            sizeLegendContainer.appendChild(dataSummary);
+        }
+        
+        // Call createBubbleLegend after data is loaded
+        createBubbleLegend();
         
         // Add bubbles for each station with data
         annualAverages.forEach((item) => {
@@ -2229,12 +2418,13 @@
                 
                 // Add tooltip
                 bubble.bindTooltip(`
-                    <div style="font-weight: bold; font-size: 14px;">${item.station}</div>
-                    <div style="font-size: 12px;">Annual Average: ${item.average} μg/m³</div>
+                    <div style="font-weight: bold; font-size: 14px; color: ${bubbleColor}">${item.station}</div>
+                    <div style="font-size: 12px; margin-top: 5px;"><strong>Annual Average:</strong> ${item.average} μg/m³</div>
+                    <div style="font-size: 11px; margin-top: 3px; color: #666;">Click for more details</div>
                 `, {
                     direction: 'top',
                     offset: [0, -bubbleSize/2],
-                    opacity: 0.9,
+                    opacity: 0.95,
                     className: 'bubble-tooltip'
                 });
                 
@@ -2242,6 +2432,46 @@
                 bubble.on('click', function() {
                     selectBubbleStation(stationIndex, item.average);
                     bubbleMap.setView([station.lat, station.lng], 14);
+                    
+                    // Highlight the clicked bubble
+                    if (currentBubble) {
+                        currentBubble.setStyle({
+                            fillOpacity: 0.7,
+                            weight: 1,
+                            color: '#333'
+                        });
+                        currentBubble.getElement().classList.remove('bubble-highlighted');
+                    }
+                    
+                    bubble.setStyle({
+                        fillOpacity: 0.9,
+                        weight: 3,
+                        color: '#fff'
+                    });
+                    
+                    bubble.getElement().classList.add('bubble-highlighted');
+                    currentBubble = bubble;
+                });
+                
+                // Add hover effect
+                bubble.on('mouseover', function() {
+                    if (currentBubble !== bubble) {
+                        this.setStyle({
+                            fillOpacity: 0.8,
+                            weight: 2,
+                            color: '#fff'
+                        });
+                    }
+                });
+                
+                bubble.on('mouseout', function() {
+                    if (currentBubble !== bubble) {
+                        this.setStyle({
+                            fillOpacity: 0.7,
+                            weight: 1,
+                            color: '#333'
+                        });
+                    }
                 });
             }
         });
@@ -2275,7 +2505,7 @@
                             <i class="fas ${config.icon}"></i>
                             <span>${config.name}</span>
                         </div>
-                        <div class="station-coords">Annual Avg: ${item.average} μg/m³</div>
+                        <div class="station-coords">Annual Avg: <strong>${item.average} μg/m³</strong></div>
                     </div>
                     <div class="station-icon">
                         <div style="
@@ -2293,6 +2523,32 @@
                 stationItem.addEventListener('click', function() {
                     selectBubbleStation(stationIndex, item.average);
                     bubbleMap.setView([station.lat, station.lng], 14);
+                    
+                    // Also highlight the corresponding bubble on the map
+                    bubbleLayer.eachLayer(function(layer) {
+                        if (layer instanceof L.CircleMarker) {
+                            const latLng = layer.getLatLng();
+                            if (Math.abs(latLng.lat - station.lat) < 0.001 && Math.abs(latLng.lng - station.lng) < 0.001) {
+                                if (currentBubble) {
+                                    currentBubble.setStyle({
+                                        fillOpacity: 0.7,
+                                        weight: 1,
+                                        color: '#333'
+                                    });
+                                    currentBubble.getElement().classList.remove('bubble-highlighted');
+                                }
+                                
+                                layer.setStyle({
+                                    fillOpacity: 0.9,
+                                    weight: 3,
+                                    color: '#fff'
+                                });
+                                
+                                layer.getElement().classList.add('bubble-highlighted');
+                                currentBubble = layer;
+                            }
+                        }
+                    });
                 });
                 
                 bubbleStationList.appendChild(stationItem);
@@ -2324,9 +2580,6 @@
             if (selectedItem) {
                 selectedItem.classList.add('active');
             }
-            
-            // Highlight the corresponding bubble (if we had a reference to it)
-            // For now, we'll just center the map on it
         }
         
         // Add scale control to bubble map
@@ -2341,6 +2594,24 @@
             
             if (firstStationIndex !== -1) {
                 selectBubbleStation(firstStationIndex, annualAverages[0].average);
+                
+                // Also highlight the corresponding bubble
+                const firstStation = stationData[firstStationIndex];
+                bubbleLayer.eachLayer(function(layer) {
+                    if (layer instanceof L.CircleMarker) {
+                        const latLng = layer.getLatLng();
+                        if (Math.abs(latLng.lat - firstStation.lat) < 0.001 && Math.abs(latLng.lng - firstStation.lng) < 0.001) {
+                            layer.setStyle({
+                                fillOpacity: 0.9,
+                                weight: 3,
+                                color: '#fff'
+                            });
+                            
+                            layer.getElement().classList.add('bubble-highlighted');
+                            currentBubble = layer;
+                        }
+                    }
+                });
             }
         }
         
