@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>London Air Quality Monitoring Network - Integrated Dashboard</title>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #1abc9c;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --success-color: #27ae60;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --gray-color: #95a5a6;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+            --border-radius: 12px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Open Sans', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header Styles */
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #1a2530 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+        
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 1000px;
+            margin: 0 auto 1.5rem;
+            font-weight: 300;
+        }
+        
+        .project-info {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .info-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            background: white;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 1.2rem;
+            background: #f8f9fa;
+            border: none;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--dark-color);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+        }
+        
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: var(--secondary-color);
+            box-shadow: 0 -2px 0 var(--secondary-color) inset;
+        }
+        
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            min-height: 800px;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 0;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-wrap: wrap;
+            height: 100%;
+        }
+        
+        /* Map Tab */
+        .map-container {
+            flex: 2;
+            min-width: 300px;
+            height: 700px;
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+        }
+        
+        .map-overlay h3 {
+            font-family: 'Montserrat', sans-serif;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        
+        /* Info Panel */
+        .info-panel {
+            flex: 1;
+            min-width: 350px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #eee;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .panel-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+        
+        .station-count {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .station-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 400px;
+            padding-right: 5px;
+        }
+        
+        /* Custom scrollbar */
+        .station-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .station-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .station-list::-webkit-scrollbar-thumb {
+            background: var(--secondary-color);
+            border-radius: 10px;
+        }
+        
+        .station-item {
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid var(--secondary-color);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .station-item:hover {
+            background-color: #e9f7fe;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .station-item.active {
+            background-color: #e9f7fe;
+            border-left-color: var(--accent-color);
+            box-shadow: 0 5px 15px rgba(26, 188, 156, 0.2);
+        }
+        
+        .station-info {
+            flex-grow: 1;
+        }
+        
+        .station-name {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.3rem;
+            font-size: 1.1rem;
+        }
+        
+        .station-type {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .station-coords {
+            font-size: 0.8rem;
+            color: var(--gray-color);
+            margin-top: 0.2rem;
+        }
+        
+        .station-icon {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+        }
+        
+        /* Station Details */
+        #station-details {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: var(--border-radius);
+            display: none;
+            border: 1px solid #dee2e6;
+        }
+        
+        #station-details.active {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .details-title {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        
+        .details-type {
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+        }
+        
+        .details-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .detail-card {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .detail-card h4 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95rem;
+            color: var(--gray-color);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-card p {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .detail-card.description {
+            grid-column: span 2;
+        }
+        
+        /* Data Tab */
+        .data-container {
+            width: 100%;
+            padding: 2rem;
+        }
+        
+        .data-header {
+            margin-bottom: 2rem;
+        }
+        
+        .data-header h2 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .data-subtitle {
+            color: var(--gray-color);
+            font-size: 1.1rem;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #f9fafc;
+            border-radius: var(--border-radius);
+            border: 1px solid #eaeaea;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+        
+        .station-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9fafc;
+            border-radius: var(--border-radius);
+            border: 1px solid #eaeaea;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        
+        .station-checkbox {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        
+        .station-checkbox input {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+        
+        .station-checkbox label {
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        select, button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #d1d9e6;
+            background-color: white;
+            font-size: 14px;
+            color: #333;
+            transition: all 0.2s;
+        }
+        
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .chart-container {
+            height: 500px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            margin-bottom: 2rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            margin-right: 15px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 6px;
+        }
+        
+        .data-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .summary-card {
+            flex: 1;
+            min-width: 150px;
+            background-color: #f9fafc;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .summary-card h4 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .summary-card p {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .info-panel-data {
+            background-color: #f0f7ff;
+            border-left: 4px solid var(--secondary-color);
+            padding: 18px;
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+        }
+        
+        .info-panel-data h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .info-panel-data p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* Legend for map */
+        .legend-map {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .legend-map h3 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        
+        .legend-item-map {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        
+        .legend-color-map {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Bubble Map Container */
+        .bubble-map-container {
+            flex: 2;
+            min-width: 300px;
+            height: 700px;
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #bubble-map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-color);
+            border-top: 1px solid #dee2e6;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-top: 2rem;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .footer-logo {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .tab-content.active {
+                flex-direction: column;
+            }
+            
+            .map-container, .info-panel, .bubble-map-container {
+                width: 100%;
+            }
+            
+            .map-container, .bubble-map-container {
+                height: 500px;
+            }
+            
+            .info-panel {
+                border-left: none;
+                border-top: 1px solid #eee;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .tab-navigation {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                padding: 1rem;
+                justify-content: flex-start;
+                border-bottom: 1px solid #eee;
+            }
+            
+            .project-info {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .map-overlay {
+                position: relative;
+                top: 0;
+                left: 0;
+                margin-bottom: 1rem;
+                max-width: 100%;
+            }
+            
+            .detail-card.description {
+                grid-column: span 1;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-wind"></i> London Air Quality Monitoring Network</h1>
+                <p class="subtitle">Integrated dashboard showing 16 monitoring stations across London and their nitrogen oxides concentration data from December 2015 to December 2016.</p>
+                <div class="project-info">
+                    <div class="info-badge">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Study Period: 2010-2020</span>
+                    </div>
+                    <div class="info-badge">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>16 Monitoring Stations</span>
+                    </div>
+                    <div class="info-badge">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Nitrogen Oxides Data: 2015-2016</span>
+                    </div>
+                    <div class="info-badge">
+                        <i class="fas fa-database"></i>
+                        <span>Interactive Data Visualization</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="map-tab">
+                <i class="fas fa-map"></i>
+                Monitoring Stations Map
+            </button>
+            <button class="tab-button" data-tab="data-tab">
+                <i class="fas fa-chart-line"></i>
+                Concentration Data Analysis
+            </button>
+            <button class="tab-button" data-tab="bubble-tab">
+                <i class="fas fa-globe"></i>
+                Bubble Map
+            </button>
+        </div>
+        
+        <div class="main-content">
+            <!-- Map Tab -->
+            <div class="tab-content active" id="map-tab">
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-overlay">
+                        <h3><i class="fas fa-info-circle"></i> Map Guide</h3>
+                        <p>Click on any station marker or select from the list to view detailed information. Colors indicate station types.</p>
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-list"></i> Station List</h2>
+                        <div class="station-count">16 Stations</div>
+                    </div>
+                    
+                    <div class="station-list" id="station-list">
+                        <!-- Station list will be dynamically generated -->
+                    </div>
+                    
+                    <div id="station-details">
+                        <div class="details-header">
+                            <div class="details-title">
+                                <i class="fas fa-info-circle"></i>
+                                <span id="selected-station-name">Station Details</span>
+                                <div id="selected-station-type" class="details-type">Roadside</div>
+                            </div>
+                        </div>
+                        <div class="details-content">
+                            <div class="detail-card">
+                                <h4><i class="fas fa-map-pin"></i> Coordinates</h4>
+                                <p id="station-coordinates">51.5074° N, 0.1278° W</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-road"></i> Station Type</h4>
+                                <p id="station-type">Roadside</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-calendar"></i> Active Period</h4>
+                                <p>2010-2020</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-ruler-combined"></i> Elevation</h4>
+                                <p id="station-elevation">~15m</p>
+                            </div>
+                            <div class="detail-card description">
+                                <h4><i class="fas fa-file-alt"></i> Description</h4>
+                                <p id="station-description">This monitoring station collects air quality data for London. Hover over different stations to see specific details about each location.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Tab -->
+            <div class="tab-content" id="data-tab">
+                <div class="data-container">
+                    <div class="data-header">
+                        <h2><i class="fas fa-chart-line"></i> Nitrogen Oxides Concentration Monitoring Data</h2>
+                        <p class="data-subtitle">December 2015 - December 2016, daily concentration changes at 14 monitoring stations (unit: μg/m³)</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="timeRange">Time Range:</label>
+                            <select id="timeRange">
+                                <option value="all">All Data</option>
+                                <option value="3m">Last 3 Months</option>
+                                <option value="6m">Last 6 Months</option>
+                                <option value="year">Year 2016</option>
+                                <option value="2015-12">December 2015</option>
+                                <option value="2016-01">January 2016</option>
+                                <option value="2016-02">February 2016</option>
+                                <option value="2016-03">March 2016</option>
+                                <option value="2016-04">April 2016</option>
+                                <option value="2016-05">May 2016</option>
+                                <option value="2016-06">June 2016</option>
+                                <option value="2016-07">July 2016</option>
+                                <option value="2016-08">August 2016</option>
+                                <option value="2016-09">September 2016</option>
+                                <option value="2016-10">October 2016</option>
+                                <option value="2016-11">November 2016</option>
+                                <option value="2016-12">December 2016</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="aggregation">Data Aggregation:</label>
+                            <select id="aggregation">
+                                <option value="none">Daily Data</option>
+                                <option value="weekly">Weekly Average</option>
+                                <option value="monthly">Monthly Average</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>&nbsp;</label>
+                            <button id="resetZoom">Reset Zoom</button>
+                        </div>
+                    </div>
+                    
+                    <div class="station-selector">
+                        <!-- Station checkboxes will be dynamically generated by JavaScript -->
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="pollutionChart"></canvas>
+                    </div>
+                    
+                    <div class="legend" id="chartLegend">
+                        <!-- Legend will be dynamically generated by JavaScript -->
+                    </div>
+                    
+                    <div class="data-summary">
+                        <div class="summary-card">
+                            <h4>Data Time Range</h4>
+                            <p id="dateRange">2015-12-01 to 2016-12-01</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Number of Monitoring Stations</h4>
+                            <p id="stationCount">14 Stations</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Maximum Concentration Record</h4>
+                            <p id="maxValue">1135 μg/m³</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Total Days of Data</h4>
+                            <p id="totalDays">367 Days</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-panel-data">
+                        <h3>Data Description</h3>
+                        <p>This chart shows the concentration trends of nitrogen oxides (as nitrogen dioxide) at 14 monitoring stations from December 1, 2015 to December 1, 2016. The unit is micrograms per cubic meter (μg/m³).</p>
+                        <p>Usage Instructions:</p>
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li>Click on station names in the legend to show/hide data lines for that station</li>
+                            <li>Use the mouse wheel to zoom in/out on the chart time range</li>
+                            <li>Drag in the chart area to pan and view different time periods</li>
+                            <li>Hover over data points to see specific values</li>
+                            <li>Use the control panel above to filter time and aggregate data</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bubble Map Tab -->
+            <div class="tab-content" id="bubble-tab">
+                <div class="bubble-map-container">
+                    <div id="bubble-map"></div>
+                    <div class="map-overlay">
+                        <h3><i class="fas fa-info-circle"></i> Bubble Map Guide</h3>
+                        <p>Bubble sizes indicate annual average concentration levels. Larger bubbles represent higher concentrations.</p>
+                        <div style="margin-top: 10px;">
+                            <h4>Bubble Size Legend:</h4>
+                            <div style="display: flex; align-items: center; margin-top: 5px;">
+                                <div style="width: 15px; height: 15px; border-radius: 50%; background-color: rgba(52, 152, 219, 0.6); margin-right: 8px;"></div>
+                                <span>Low Concentration</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin-top: 5px;">
+                                <div style="width: 25px; height: 25px; border-radius: 50%; background-color: rgba(231, 76, 60, 0.6); margin-right: 8px;"></div>
+                                <span>Medium Concentration</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin-top: 5px;">
+                                <div style="width: 35px; height: 35px; border-radius: 50%; background-color: rgba(192, 57, 43, 0.8); margin-right: 8px;"></div>
+                                <span>High Concentration</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <div class="panel-header">
+                        <h2><i class="fas fa-chart-bar"></i> Annual Average Concentration</h2>
+                        <div class="station-count">14 Stations</div>
+                    </div>
+                    
+                    <div class="station-list" id="bubble-station-list">
+                        <!-- Bubble map station list will be dynamically generated -->
+                    </div>
+                    
+                    <div id="bubble-station-details">
+                        <div class="details-header">
+                            <div class="details-title">
+                                <i class="fas fa-info-circle"></i>
+                                <span id="bubble-selected-station-name">Station Details</span>
+                                <div id="bubble-selected-station-type" class="details-type">Roadside</div>
+                            </div>
+                        </div>
+                        <div class="details-content">
+                            <div class="detail-card">
+                                <h4><i class="fas fa-map-pin"></i> Coordinates</h4>
+                                <p id="bubble-station-coordinates">51.5074° N, 0.1278° W</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-road"></i> Station Type</h4>
+                                <p id="bubble-station-type">Roadside</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-chart-line"></i> Annual Average</h4>
+                                <p id="annual-average">0 μg/m³</p>
+                            </div>
+                            <div class="detail-card">
+                                <h4><i class="fas fa-ruler-combined"></i> Elevation</h4>
+                                <p id="bubble-station-elevation">~15m</p>
+                            </div>
+                            <div class="detail-card description">
+                                <h4><i class="fas fa-file-alt"></i> Description</h4>
+                                <p id="bubble-station-description">This monitoring station collects air quality data for London. Hover over different stations to see specific details about each location.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend-map">
+            <h3><i class="fas fa-key"></i> Station Type Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item-map">
+                    <div class="legend-color-map" style="background-color: #e74c3c;"></div>
+                    <span><strong>Roadside</strong> - Monitors traffic-related pollution</span>
+                </div>
+                <div class="legend-item-map">
+                    <div class="legend-color-map" style="background-color: #3498db;"></div>
+                    <span><strong>Urban Background</strong> - Represents general urban air quality</span>
+                </div>
+                <div class="legend-item-map">
+                    <div class="legend-color-map" style="background-color: #2ecc71;"></div>
+                    <span><strong>Suburban</strong> - Monitors air quality in suburban areas</span>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <i class="fas fa-leaf"></i>
+                    <span>London Air Quality Project</span>
+                </div>
+                <div>
+                    <p>Data Source: London Air Quality Network | Visualization for Data Storytelling Project</p>
+                </div>
+                <div>
+                    <p><i class="far fa-calendar"></i> Study Period: 2010-2020 | <i class="fas fa-map-marker-alt"></i> 16 Monitoring Stations | <i class="fas fa-chart-line"></i> NOx Data: 2015-2016</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and contents
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ==================== MAP FUNCTIONALITY ====================
+        
+        // London air quality monitoring stations data
+        const stationData = [
+            { 
+                name: "Camden Kerbside", 
+                lat: 51.544233, 
+                lng: -0.175228, 
+                type: "roadside", 
+                description: "Roadside monitoring station in Camden, primarily measuring traffic-related pollutants like NO₂ and PM.",
+                elevation: "18m"
+            },
+            { 
+                name: "Haringey Roadside", 
+                lat: 51.5993, 
+                lng: -0.068218, 
+                type: "roadside", 
+                description: "Roadside monitoring site in Haringey, located near a major road intersection to capture traffic emissions.",
+                elevation: "32m"
+            },
+            { 
+                name: "London Bexley", 
+                lat: 51.46603, 
+                lng: 0.184806, 
+                type: "suburban", 
+                description: "Suburban monitoring station in Bexley, representing air quality in southeast London.",
+                elevation: "22m"
+            },
+            { 
+                name: "London Bloomsbury", 
+                lat: 51.52229, 
+                lng: -0.125889, 
+                type: "urban", 
+                description: "Urban background station in Bloomsbury, near the British Museum, measuring general urban air quality.",
+                elevation: "25m"
+            },
+            { 
+                name: "London Cromwell Road 2", 
+                lat: 51.495483, 
+                lng: -0.178709, 
+                type: "roadside", 
+                description: "Roadside station on Cromwell Road, monitoring traffic pollution in west central London.",
+                elevation: "16m"
+            },
+            { 
+                name: "London Eltham", 
+                lat: 51.45258, 
+                lng: 0.070766, 
+                type: "suburban", 
+                description: "Suburban monitoring site in Eltham, capturing air quality data for southeast suburban London.",
+                elevation: "41m"
+            },
+            { 
+                name: "London Haringey", 
+                lat: 51.58603, 
+                lng: -0.126486, 
+                type: "urban", 
+                description: "Urban background station in Haringey, away from major roads to measure general urban air quality.",
+                elevation: "38m"
+            },
+            { 
+                name: "London Haringey Priory Park South", 
+                lat: 51.584128, 
+                lng: -0.125254, 
+                type: "urban", 
+                description: "Urban station in Priory Park South, Haringey, providing air quality data from a green urban area.",
+                elevation: "35m"
+            },
+            { 
+                name: "London Harlington", 
+                lat: 51.48879, 
+                lng: -0.441614, 
+                type: "suburban", 
+                description: "Suburban station in Harlington, near Heathrow Airport, monitoring air quality with potential aviation influence.",
+                elevation: "24m"
+            },
+            { 
+                name: "London Hillingdon", 
+                lat: 51.49633, 
+                lng: -0.460861, 
+                type: "suburban", 
+                description: "Suburban monitoring site in Hillingdon, representing air quality in west London suburbs.",
+                elevation: "28m"
+            },
+            { 
+                name: "London Marylebone Road", 
+                lat: 51.52253, 
+                lng: -0.154611, 
+                type: "roadside", 
+                description: "Important roadside station on Marylebone Road, a key indicator for traffic pollution in central London.",
+                elevation: "20m"
+            },
+            { 
+                name: "London N. Kensington", 
+                lat: 51.52105, 
+                lng: -0.213419, 
+                type: "urban", 
+                description: "Urban background station in North Kensington, providing air quality data for west central London.",
+                elevation: "22m"
+            },
+            { 
+                name: "London Teddington", 
+                lat: 51.42099, 
+                lng: -0.339647, 
+                type: "suburban", 
+                description: "Suburban monitoring station in Teddington, representing air quality in southwest London suburbs.",
+                elevation: "12m"
+            },
+            { 
+                name: "London Westminster", 
+                lat: 51.49467, 
+                lng: -0.131931, 
+                type: "urban", 
+                description: "Urban station in Westminster, monitoring air quality near London's political center.",
+                elevation: "15m"
+            },
+            { 
+                name: "Southwark A2 Old Kent Road", 
+                lat: 51.480499, 
+                lng: -0.05955, 
+                type: "roadside", 
+                description: "Roadside station on A2 Old Kent Road in Southwark, monitoring traffic pollution on this major route.",
+                elevation: "10m"
+            },
+            { 
+                name: "Tower Hamlets Roadside", 
+                lat: 51.52253, 
+                lng: -0.042155, 
+                type: "roadside", 
+                description: "Roadside monitoring site in Tower Hamlets, capturing air quality data in a busy east London area.",
+                elevation: "8m"
+            }
+        ];
+
+        // Station type configuration
+        const typeConfig = {
+            "roadside": {
+                name: "Roadside",
+                color: "#e74c3c",
+                icon: "fa-road"
+            },
+            "urban": {
+                name: "Urban Background",
+                color: "#3498db",
+                icon: "fa-city"
+            },
+            "suburban": {
+                name: "Suburban",
+                color: "#2ecc71",
+                icon: "fa-home"
+            }
+        };
+
+        // Initialize the map centered on London
+        const map = L.map('map').setView([51.5074, -0.1278], 11);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Create a layer group for markers
+        const markers = L.layerGroup().addTo(map);
+        
+        // Store markers for reference
+        const stationMarkers = [];
+        let activeMarker = null;
+        
+        // Create custom icon for markers
+        function createCustomIcon(stationType, isActive = false) {
+            const config = typeConfig[stationType];
+            const size = isActive ? 32 : 24;
+            const borderWidth = isActive ? 4 : 2;
+            
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    background-color: ${config.color}; 
+                    width: ${size}px; 
+                    height: ${size}px; 
+                    border-radius: 50%; 
+                    border: ${borderWidth}px solid white; 
+                    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: ${size/2}px;
+                "><i class="fas ${config.icon}"></i></div>`,
+                iconSize: [size + 10, size + 10],
+                iconAnchor: [(size + 10)/2, (size + 10)/2]
+            });
+        }
+        
+        // Add markers to the map
+        stationData.forEach((station, index) => {
+            const icon = createCustomIcon(station.type);
+            
+            const marker = L.marker([station.lat, station.lng], { icon: icon })
+                .addTo(markers)
+                .bindTooltip(`
+                    <div style="font-weight: bold; font-size: 14px;">${station.name}</div>
+                    <div style="font-size: 12px;">${typeConfig[station.type].name}</div>
+                `, {
+                    direction: 'top',
+                    offset: [0, -15],
+                    opacity: 0.9,
+                    className: 'custom-tooltip'
+                });
+            
+            // Add click event to marker
+            marker.on('click', function() {
+                selectStation(index);
+                map.setView([station.lat, station.lng], 14);
+            });
+            
+            // Add hover events
+            marker.on('mouseover', function() {
+                this.openTooltip();
+                highlightStationItem(index, false);
+            });
+            
+            marker.on('mouseout', function() {
+                this.closeTooltip();
+                if (activeMarker !== index) {
+                    removeHighlightStationItem();
+                }
+            });
+            
+            stationMarkers.push(marker);
+        });
+        
+        // Generate station list
+        const stationList = document.getElementById('station-list');
+        
+        stationData.forEach((station, index) => {
+            const config = typeConfig[station.type];
+            
+            const stationItem = document.createElement('div');
+            stationItem.className = 'station-item';
+            stationItem.dataset.index = index;
+            
+            stationItem.innerHTML = `
+                <div class="station-info">
+                    <div class="station-name">${station.name}</div>
+                    <div class="station-type">
+                        <i class="fas ${config.icon}"></i>
+                        <span>${config.name}</span>
+                    </div>
+                    <div class="station-coords">${station.lat.toFixed(5)}° N, ${station.lng.toFixed(5)}° W</div>
+                </div>
+                <div class="station-icon">
+                    <i class="fas ${config.icon}"></i>
+                </div>
+            `;
+            
+            // Add click event to list item
+            stationItem.addEventListener('click', function() {
+                selectStation(index);
+                map.setView([station.lat, station.lng], 14);
+            });
+            
+            // Add hover events to list item
+            stationItem.addEventListener('mouseover', function() {
+                highlightStationItem(index, true);
+                stationMarkers[index].openTooltip();
+            });
+            
+            stationItem.addEventListener('mouseout', function() {
+                if (activeMarker !== index) {
+                    removeHighlightStationItem();
+                    stationMarkers[index].closeTooltip();
+                }
+            });
+            
+            stationList.appendChild(stationItem);
+        });
+        
+        // Function to select a station
+        function selectStation(index) {
+            const station = stationData[index];
+            const config = typeConfig[station.type];
+            
+            // Update active marker reference
+            activeMarker = index;
+            
+            // Update station details panel
+            document.getElementById('selected-station-name').textContent = station.name;
+            document.getElementById('selected-station-type').textContent = config.name;
+            document.getElementById('selected-station-type').style.backgroundColor = config.color;
+            document.getElementById('station-coordinates').textContent = `${station.lat.toFixed(6)}° N, ${station.lng.toFixed(6)}° W`;
+            document.getElementById('station-type').textContent = config.name;
+            document.getElementById('station-elevation').textContent = station.elevation;
+            document.getElementById('station-description').textContent = station.description;
+            
+            // Show details panel
+            document.getElementById('station-details').classList.add('active');
+            
+            // Update active state in list
+            const allItems = document.querySelectorAll('.station-item');
+            allItems.forEach(item => item.classList.remove('active'));
+            allItems[index].classList.add('active');
+            
+            // Update marker icons
+            stationMarkers.forEach((marker, i) => {
+                const isActive = i === index;
+                const stationType = stationData[i].type;
+                marker.setIcon(createCustomIcon(stationType, isActive));
+                
+                if (isActive) {
+                    marker.openTooltip();
+                }
+            });
+        }
+        
+        // Function to highlight a station item
+        function highlightStationItem(index, fromList) {
+            const allItems = document.querySelectorAll('.station-item');
+            
+            if (!fromList) {
+                allItems[index].classList.add('highlighted');
+            }
+            
+            // Highlight the corresponding marker
+            stationMarkers.forEach((marker, i) => {
+                if (i === index) {
+                    marker.setIcon(createCustomIcon(stationData[i].type, true));
+                }
+            });
+        }
+        
+        // Function to remove highlight from station items
+        function removeHighlightStationItem() {
+            const allItems = document.querySelectorAll('.station-item');
+            allItems.forEach(item => item.classList.remove('highlighted'));
+            
+            // Reset markers to normal state if not active
+            stationMarkers.forEach((marker, i) => {
+                if (i !== activeMarker) {
+                    marker.setIcon(createCustomIcon(stationData[i].type, false));
+                }
+            });
+        }
+        
+        // Select the first station by default
+        selectStation(0);
+        
+        // Add a scale control to the map
+        L.control.scale().addTo(map);
+
+        // ==================== CHART FUNCTIONALITY ====================
+        
+        // Parse raw data
+        function parseData(dataText) {
+            const lines = dataText.trim().split('\n');
+            const headers = lines[0].split('\t');
+            
+            // Extract station names (every two columns: concentration value and status)
+            const stations = [
+                "Camden Kerbside",
+                "Haringey Roadside", 
+                "London Bexley",
+                "London Bloomsbury",
+                "London Cromwell Road 2",
+                "London Eltham",
+                "London Haringey",
+                "London Haringey Priory Park South",
+                "London Harlington",
+                "London Hillingdon",
+                "London Marylebone Road",
+                "London N. Kensington",
+                "London Teddington",
+                "London Westminster"
+            ];
+            
+            // Parse data rows
+            const dates = [];
+            const stationDataChart = stations.map(() => []);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split('\t');
+                if (parts.length < 2) continue;
+                
+                // Parse date
+                const dateStr = parts[0];
+                dates.push(dateStr);
+                
+                // Parse each station's data
+                for (let j = 0; j < stations.length; j++) {
+                    const valueIndex = 1 + j * 2;
+                    const value = parts[valueIndex] && parts[valueIndex].trim() !== '' ? 
+                                  parseInt(parts[valueIndex]) : null;
+                    stationDataChart[j].push(value);
+                }
+            }
+            
+            return { dates, stations, stationData: stationDataChart };
+        }
+        
+        // Raw data
+        const rawData = `Date	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status	Nitrogen oxides as nitrogen dioxide	Status
+2015/12/1	74	V ugm-3	90	V ugm-3	23	V ugm-3	56	V ugm-3	21	V ugm-3	25	V ugm-3	29	V ugm-3	98	V ugm-3	478	V ugm-3	29	V ugm-3	16	V ugm-3	46	V ugm-3	47	V ugm-3		V ugm-3
+2015/12/2	100	V ugm-3	99	V ugm-3	27	V ugm-3	47	V ugm-3	16	V ugm-3	23	V ugm-3	42	V ugm-3	134	V ugm-3	435	V ugm-3	29	V ugm-3	15	V ugm-3	37	V ugm-3	29	V ugm-3		V ugm-3
+2015/12/3	77	V ugm-3	110	V ugm-3	26	V ugm-3	48	V ugm-3	16	V ugm-3	27	V ugm-3	42	V ugm-3	123	V ugm-3	433	V ugm-3	24	V ugm-3	15	V ugm-3	36	V ugm-3	29	V ugm-3		V ugm-3
+2015/12/4	86	V ugm-3	92	V ugm-3	26	V ugm-3	61	V ugm-3	20	V ugm-3	27	V ugm-3	46	V ugm-3	131	V ugm-3	498	V ugm-3	35	V ugm-3	18	V ugm-3	45	V ugm-3	37	V ugm-3		V ugm-3
+2015/12/5	41	V ugm-3	45	V ugm-3	9	V ugm-3	26	V ugm-3	7	V ugm-3	10	V ugm-3	24	V ugm-3	54	V ugm-3	359	V ugm-3	12	V ugm-3	11	V ugm-3	16	V ugm-3	14	V ugm-3		V ugm-3
+2015/12/6	50	V ugm-3	71	V ugm-3	11	V ugm-3	32	V ugm-3	9	V ugm-3	16	V ugm-3	40	V ugm-3	92	V ugm-3	274	V ugm-3	17	V ugm-3	12	V ugm-3	17	V ugm-3	21	V ugm-3		V ugm-3
+2015/12/7	129	V ugm-3	115	V ugm-3	34	V ugm-3	61	V ugm-3	20	V ugm-3	38	V ugm-3	60	V ugm-3	163	V ugm-3	388	V ugm-3	38	V ugm-3	19	V ugm-3	49	V ugm-3	39	V ugm-3		V ugm-3
+2015/12/8	87	V ugm-3	87	V ugm-3	26	V ugm-3	51	V ugm-3	18	V ugm-3	28	V ugm-3	48	V ugm-3	127	V ugm-3	507	V ugm-3	34	V ugm-3	12	V ugm-3	42	V ugm-3	30	V ugm-3		V ugm-3
+2015/12/9	108	V ugm-3	112	V ugm-3	46	V ugm-3	56	V ugm-3	27	V ugm-3	37	V ugm-3	68	V ugm-3	187	V ugm-3	554	V ugm-3	52	V ugm-3	17	V ugm-3	54	V ugm-3	50	V ugm-3		V ugm-3
+2015/12/10	79	V ugm-3	81	V ugm-3	25	V ugm-3	49	V ugm-3	15	V ugm-3	24	V ugm-3	45	V ugm-3	127	V ugm-3	459	V ugm-3	32	V ugm-3	15	V ugm-3	36	V ugm-3	30	V ugm-3		V ugm-3
+2015/12/11	97	V ugm-3	82	V ugm-3	38	V ugm-3	71	V ugm-3	38	V ugm-3	41	V ugm-3	48	V ugm-3	147	V ugm-3	544	V ugm-3	50	V ugm-3	17	V ugm-3	66	V ugm-3	63	V ugm-3		V ugm-3
+2015/12/12	84	V ugm-3	88	V ugm-3	28	V ugm-3	50	V ugm-3	18	V ugm-3	33	V ugm-3	48	V ugm-3	116	V ugm-3	369	V ugm-3	37	V ugm-3	18	V ugm-3	36	V ugm-3	42	V ugm-3		V ugm-3
+2015/12/13	162	V ugm-3	138	V ugm-3	42	V ugm-3	99	V ugm-3	37	V ugm-3	52	V ugm-3	89	V ugm-3	156	V ugm-3	247	V ugm-3	83	V ugm-3	39	V ugm-3	75	V ugm-3	188	V ugm-3		V ugm-3
+2015/12/14	231	V ugm-3	142	V ugm-3	56	V ugm-3	76	V ugm-3	35	V ugm-3	50	V ugm-3	61	V ugm-3	272	V ugm-3	350	V ugm-3	56	V ugm-3	24	V ugm-3	59	V ugm-3	87	V ugm-3		V ugm-3
+2015/12/15	257	V ugm-3	151	V ugm-3	59	V ugm-3	106	V ugm-3		V ugm-3	76	V ugm-3	69	V ugm-3	235	V ugm-3	388	V ugm-3	73	V ugm-3	26	V ugm-3	77	V ugm-3	161	V ugm-3		V ugm-3
+2015/12/16	76	V ugm-3	80	V ugm-3	23	V ugm-3	50	V ugm-3		V ugm-3	25	V ugm-3	40	V ugm-3	123	V ugm-3	469	V ugm-3	31	V ugm-3	11	V ugm-3	36	V ugm-3	30	V ugm-3		V ugm-3
+2015/12/17	83	V ugm-3	107	V ugm-3	35	V ugm-3	60	V ugm-3		V ugm-3	34	V ugm-3	66	V ugm-3	172	V ugm-3	508	V ugm-3	40	V ugm-3	19	V ugm-3	45	V ugm-3	39	V ugm-3		V ugm-3
+2015/12/18	80	V ugm-3	99	V ugm-3	33	V ugm-3	52	V ugm-3	17	V ugm-3	25	V ugm-3	54	V ugm-3	166	V ugm-3	454	V ugm-3	35	V ugm-3	17	V ugm-3	37	V ugm-3	36	V ugm-3		V ugm-3
+2015/12/19	50	V ugm-3	76	V ugm-3	15	V ugm-3	39	V ugm-3	11	V ugm-3	22	V ugm-3	47	V ugm-3	98	V ugm-3	263	V ugm-3	19	V ugm-3	19	V ugm-3	22	V ugm-3	25	V ugm-3		V ugm-3
+2015/12/20	51	V ugm-3	61	V ugm-3	17	V ugm-3	36	V ugm-3	11	V ugm-3	18	V ugm-3	47	V ugm-3	107	V ugm-3	262	V ugm-3	21	V ugm-3	13	V ugm-3	18	V ugm-3	24	V ugm-3		V ugm-3
+2015/12/21	73	V ugm-3	83	V ugm-3	28	V ugm-3	50	V ugm-3	17	V ugm-3	25	V ugm-3	47	V ugm-3	132	V ugm-3	379	V ugm-3	34	V ugm-3	15	V ugm-3	33	V ugm-3	33	V ugm-3		V ugm-3
+2015/12/22	46	V ugm-3	47	V ugm-3	12	V ugm-3	30	V ugm-3	8	V ugm-3	13	V ugm-3	26	V ugm-3	71	V ugm-3	258	V ugm-3	17	V ugm-3	13	V ugm-3	23	V ugm-3	18	V ugm-3		V ugm-3
+2015/12/23	69	V ugm-3	91	V ugm-3	23	V ugm-3	38	V ugm-3	15	V ugm-3	23	V ugm-3	44	V ugm-3	117	V ugm-3	345	V ugm-3	25	V ugm-3	15	V ugm-3	27	V ugm-3	35	V ugm-3		V ugm-3
+2015/12/24	47	V ugm-3	60	V ugm-3	17	V ugm-3	30	V ugm-3	16	V ugm-3	17	V ugm-3	27	V ugm-3	76	V ugm-3	241	V ugm-3	19	V ugm-3	13	V ugm-3	21	V ugm-3	30	V ugm-3		V ugm-3
+2015/12/25	37	V ugm-3	48	V ugm-3	12	V ugm-3	22	V ugm-3	6	V ugm-3	17	V ugm-3	45	V ugm-3	84	V ugm-3	139	V ugm-3	16	V ugm-3	9	V ugm-3	15	V ugm-3	16	V ugm-3		V ugm-3
+2015/12/26	24	V ugm-3	36	V ugm-3	7	V ugm-3	17	V ugm-3	5	V ugm-3	7	V ugm-3	22	V ugm-3	38	V ugm-3	116	V ugm-3	9	V ugm-3	12	V ugm-3	9	V ugm-3	10	V ugm-3		V ugm-3
+2015/12/27	45	V ugm-3	62	V ugm-3	12	V ugm-3	29	V ugm-3	10	V ugm-3	16	V ugm-3	42	V ugm-3	89	V ugm-3	228	V ugm-3	18	V ugm-3	13	V ugm-3	14	V ugm-3	20	V ugm-3		V ugm-3
+2015/12/28	133	V ugm-3	81	V ugm-3	26	V ugm-3	54	V ugm-3	15	V ugm-3	34	V ugm-3	43	V ugm-3	118	V ugm-3	209	V ugm-3	34	V ugm-3	18	V ugm-3	35	V ugm-3	48	V ugm-3		V ugm-3
+2015/12/29	62	V ugm-3	94	V ugm-3	20	V ugm-3	38	V ugm-3	11	V ugm-3	26	V ugm-3	58	V ugm-3	125	V ugm-3	342	V ugm-3	24	V ugm-3	11	V ugm-3	25	V ugm-3	28	V ugm-3		V ugm-3
+2015/12/30	55	V ugm-3	61	V ugm-3	13	V ugm-3	30	V ugm-3	6	V ugm-3	19	V ugm-3	43	V ugm-3	72	V ugm-3	206	V ugm-3	14	V ugm-3	12	V ugm-3	17	V ugm-3	15	V ugm-3		V ugm-3
+2015/12/31	46	V ugm-3	57	V ugm-3	14	V ugm-3	31	V ugm-3	10	V ugm-3	15	V ugm-3	30	V ugm-3	82	V ugm-3	248	V ugm-3	18	V ugm-3	8	V ugm-3	21	V ugm-3	24	V ugm-3		V ugm-3
+2016/1/1	183	V ugm-3	107	V ugm-3	36	V ugm-3	74	V ugm-3	24	V ugm-3	57	V ugm-3	62	V ugm-3	159	V ugm-3	219	V ugm-3	60	V ugm-3	24	V ugm-3	71	V ugm-3	111	V ugm-3		V ugm-3
+2016/1/2	102	V ugm-3	46	V ugm-3	16	V ugm-3	47	V ugm-3	11	V ugm-3	19	V ugm-3	20	V ugm-3	112	V ugm-3	186	V ugm-3	27	V ugm-3	8	V ugm-3	25	V ugm-3	27	V ugm-3		V ugm-3
+2016/1/3	95	V ugm-3	68	V ugm-3	28	V ugm-3	48	V ugm-3	15	V ugm-3	28	V ugm-3	54	V ugm-3	141	V ugm-3	238	V ugm-3	36	V ugm-3	11	V ugm-3	27	V ugm-3	40	V ugm-3		V ugm-3
+2016/1/4	114	V ugm-3	134	V ugm-3	38	V ugm-3	60	V ugm-3	21	V ugm-3	47	V ugm-3	77	V ugm-3	203	V ugm-3	352	V ugm-3	43	V ugm-3	13	V ugm-3	45	V ugm-3	47	V ugm-3		V ugm-3
+2016/1/5	225	V ugm-3	202	V ugm-3	92	V ugm-3	82	V ugm-3	45	V ugm-3	98	V ugm-3	126	V ugm-3	336	V ugm-3	428	V ugm-3	78	V ugm-3	41	V ugm-3	78	V ugm-3	132	V ugm-3		V ugm-3
+2016/1/6	415	V ugm-3	241	V ugm-3	185	V ugm-3		V ugm-3	151	V ugm-3	170	V ugm-3	190	V ugm-3	282	V ugm-3	365	V ugm-3	175	V ugm-3	133	V ugm-3	195	V ugm-3	347	V ugm-3		V ugm-3
+2016/1/7	123	V ugm-3	66	V ugm-3	33	V ugm-3	72	V ugm-3	26	V ugm-3	34	V ugm-3	43	V ugm-3	116	V ugm-3	344	V ugm-3	40	V ugm-3	14	V ugm-3	57	V ugm-3	48	V ugm-3		V ugm-3
+2016/1/8	166	V ugm-3	213	V ugm-3	60	V ugm-3	83	V ugm-3	24	V ugm-3	61	V ugm-3	104	V ugm-3	244	V ugm-3	503	V ugm-3	67	V ugm-3	19	V ugm-3	60	V ugm-3	70	V ugm-3		V ugm-3
+2016/1/9	89	V ugm-3	91	V ugm-3	19	V ugm-3	45	V ugm-3	10	V ugm-3	31	V ugm-3	59	V ugm-3	111	V ugm-3	259	V ugm-3	22	V ugm-3	7	V ugm-3	26	V ugm-3	23	V ugm-3		V ugm-3
+2016/1/10	74	V ugm-3	84	V ugm-3	17	V ugm-3	43	V ugm-3	11	V ugm-3	29	V ugm-3	67	V ugm-3	154	V ugm-3	267	V ugm-3	29	V ugm-3	9	V ugm-3	27	V ugm-3	29	V ugm-3		V ugm-3
+2016/1/11	145	V ugm-3	90	V ugm-3	53	V ugm-3	87	V ugm-3	40	V ugm-3	47	V ugm-3	59	V ugm-3	160	V ugm-3	442	V ugm-3	60	V ugm-3	24	V ugm-3	86	V ugm-3	70	V ugm-3		V ugm-3
+2016/1/12	78	V ugm-3	48	V ugm-3	31	V ugm-3	71	V ugm-3	29	V ugm-3	27	V ugm-3	26	V ugm-3	80	V ugm-3	368	V ugm-3	33	V ugm-3	16	V ugm-3	67	V ugm-3	52	V ugm-3		V ugm-3
+2016/1/13	145	V ugm-3	123	V ugm-3	45	V ugm-3		V ugm-3	41	V ugm-3	46	V ugm-3	62	V ugm-3	157	V ugm-3	478	V ugm-3	51	V ugm-3	22	V ugm-3	68	V ugm-3	63	V ugm-3		V ugm-3
+2016/1/14	94	V ugm-3	46	V ugm-3	32	V ugm-3	116	V ugm-3	28	V ugm-3	26	V ugm-3	34	V ugm-3	58	V ugm-3	278	V ugm-3	35	V ugm-3	21	V ugm-3		V ugm-3	86	V ugm-3		V ugm-3
+2016/1/15	212	V ugm-3	64	V ugm-3	42	V ugm-3	150	V ugm-3	42	V ugm-3	35	V ugm-3	63	V ugm-3	41	V ugm-3	181	V ugm-3	55	V ugm-3	34	V ugm-3	108	V ugm-3	169	V ugm-3		V ugm-3
+2016/1/16	303	V ugm-3	114	V ugm-3	135	V ugm-3	118	V ugm-3	91	V ugm-3	73	V ugm-3	106	V ugm-3	93	V ugm-3	234	V ugm-3	96	V ugm-3	66	V ugm-3	129	V ugm-3	147	V ugm-3		V ugm-3
+2016/1/17	385	V ugm-3	103	V ugm-3	48	V ugm-3	91	V ugm-3	36	V ugm-3	56	V ugm-3	54	V ugm-3	159	V ugm-3	205	V ugm-3	57	V ugm-3	30	V ugm-3	63	V ugm-3	124	V ugm-3		V ugm-3
+2016/1/18	451	V ugm-3	155	V ugm-3	72	V ugm-3	110	V ugm-3	57	V ugm-3	75	V ugm-3	90	V ugm-3	211	V ugm-3	326	V ugm-3	69	V ugm-3	42	V ugm-3	93	V ugm-3	223	V ugm-3		V ugm-3
+2016/1/19	647	V ugm-3	368	V ugm-3	366	V ugm-3	366	V ugm-3	278	V ugm-3	262	V ugm-3	536	V ugm-3	478	V ugm-3	604	V ugm-3	464	V ugm-3	252	V ugm-3	389	V ugm-3	491	V ugm-3		V ugm-3
+2016/1/20	908	V ugm-3	561	V ugm-3	514	V ugm-3	516	V ugm-3	393	V ugm-3	387	V ugm-3	534	V ugm-3	538	V ugm-3	863	V ugm-3	500	V ugm-3	304	V ugm-3	505	V ugm-3	628	V ugm-3		V ugm-3
+2016/1/21	444	V ugm-3	310	V ugm-3	261	V ugm-3	195	V ugm-3	88	V ugm-3	245	V ugm-3	153	V ugm-3	324	V ugm-3	532	V ugm-3	138	V ugm-3	79	V ugm-3	165	V ugm-3	268	V ugm-3		V ugm-3
+2016/1/22	193	V ugm-3	126	V ugm-3	46	V ugm-3	82	V ugm-3	33	V ugm-3	54	V ugm-3	70	V ugm-3	171	V ugm-3	520	V ugm-3	58	V ugm-3	21	V ugm-3	82	V ugm-3	53	V ugm-3		V ugm-3
+2016/1/23	162	V ugm-3	138	V ugm-3	32	V ugm-3	61	V ugm-3	22	V ugm-3	40	V ugm-3	74	V ugm-3	191	V ugm-3	386	V ugm-3	57	V ugm-3	19	V ugm-3	57	V ugm-3	72	V ugm-3		V ugm-3
+2016/1/24	94	V ugm-3	78	V ugm-3	18	V ugm-3	43	V ugm-3	13	V ugm-3	24	V ugm-3	45	V ugm-3	110	V ugm-3	274	V ugm-3	27	V ugm-3	14	V ugm-3	33	V ugm-3	30	V ugm-3		V ugm-3
+2016/1/25	97	V ugm-3	99	V ugm-3	27	V ugm-3	49	V ugm-3	17	V ugm-3	31	V ugm-3	41	V ugm-3	133	V ugm-3	369	V ugm-3	31	V ugm-3	24	V ugm-3	49	V ugm-3	33	V ugm-3		V ugm-3
+2016/1/26	78	V ugm-3	71	V ugm-3	20	V ugm-3	38	V ugm-3	11	V ugm-3	20	V ugm-3	31	V ugm-3	96	V ugm-3	321	V ugm-3	24	V ugm-3	16	V ugm-3	33	V ugm-3	26	V ugm-3		V ugm-3
+2016/1/27	70	V ugm-3	49	V ugm-3	19	V ugm-3	48	V ugm-3	13	V ugm-3	17	V ugm-3	24	V ugm-3	69	V ugm-3	293	V ugm-3		V ugm-3	19	V ugm-3	44	V ugm-3	28	V ugm-3		V ugm-3
+2016/1/28	143	V ugm-3	94	V ugm-3	34	V ugm-3	55	V ugm-3	27	V ugm-3	35	V ugm-3	61	V ugm-3	168	V ugm-3	497	V ugm-3		V ugm-3	26	V ugm-3	56	V ugm-3	53	V ugm-3		V ugm-3
+2016/1/29	58	V ugm-3	51	V ugm-3	12	V ugm-3	30	V ugm-3	9	V ugm-3	15	V ugm-3	28	V ugm-3	61	V ugm-3	331	V ugm-3	18	V ugm-3	17	V ugm-3	29	V ugm-3	23	V ugm-3		V ugm-3
+2016/1/30	47	V ugm-3	43	V ugm-3	16	V ugm-3	56	V ugm-3	16	V ugm-3	17	V ugm-3	21	V ugm-3	59	V ugm-3	276	V ugm-3	22	V ugm-3	17	V ugm-3	48	V ugm-3	46	V ugm-3		V ugm-3
+2016/1/31	50	V ugm-3	62	V ugm-3	17	V ugm-3	40	V ugm-3	12	V ugm-3	21	V ugm-3	27	V ugm-3	88	V ugm-3	299	V ugm-3	26	V ugm-3	15	V ugm-3	31	V ugm-3	30	V ugm-3		V ugm-3
+2016/2/1	38	V ugm-3	39	V ugm-3	10	V ugm-3	29	V ugm-3	11	V ugm-3	13	V ugm-3	19	V ugm-3	62	V ugm-3	321	V ugm-3	17	V ugm-3	19	V ugm-3	27	V ugm-3	22	V ugm-3		V ugm-3
+2016/2/2	49	V ugm-3	50	V ugm-3	19	V ugm-3	49	V ugm-3	20	V ugm-3	19	V ugm-3	18	V ugm-3	80	V ugm-3	392	V ugm-3	25	V ugm-3	20	V ugm-3	54	V ugm-3	35	V ugm-3		V ugm-3
+2016/2/3	85	V ugm-3	66	V ugm-3	44	V ugm-3	91	V ugm-3	42	V ugm-3	36	V ugm-3	44	V ugm-3	95	V ugm-3	340	V ugm-3	46	V ugm-3	30	V ugm-3	92	V ugm-3	98	V ugm-3	149	V ugm-3
+2016/2/4	80	V ugm-3	84	V ugm-3	42	V ugm-3	96	V ugm-3	36	V ugm-3	37	V ugm-3		V ugm-3	86	V ugm-3	387	V ugm-3	54	V ugm-3	25	V ugm-3	106	V ugm-3	79	V ugm-3	150	V ugm-3
+2016/2/5	75	V ugm-3	88	V ugm-3	23	V ugm-3	46	V ugm-3	13	V ugm-3	23	V ugm-3		V ugm-3	116	V ugm-3	418	V ugm-3	31	V ugm-3	15	V ugm-3	40	V ugm-3	34	V ugm-3	41	V ugm-3
+2016/2/6	39	V ugm-3	49	V ugm-3	9	V ugm-3	28	V ugm-3	6	V ugm-3	14	V ugm-3		V ugm-3	68	V ugm-3	207	V ugm-3	14	V ugm-3	12	V ugm-3	22	V ugm-3	44	V ugm-3	14	V ugm-3
+2016/2/7	40	V ugm-3	44	V ugm-3	8	V ugm-3	29	V ugm-3	7	V ugm-3	13	V ugm-3		V ugm-3	72	V ugm-3	236	V ugm-3	15	V ugm-3	11	V ugm-3	18	V ugm-3	47	V ugm-3	19	V ugm-3
+2016/2/8	38	V ugm-3	41	V ugm-3	10	V ugm-3		V ugm-3	11	V ugm-3	13	V ugm-3		V ugm-3	60	V ugm-3	336	V ugm-3	16	V ugm-3	10	V ugm-3	29	V ugm-3		V ugm-3	38	V ugm-3
+2016/2/9	103	V ugm-3	81	V ugm-3	40	V ugm-3	69	V ugm-3	30	V ugm-3	33	V ugm-3		V ugm-3	131	V ugm-3	431	V ugm-3	41	V ugm-3	23	V ugm-3	70	V ugm-3		V ugm-3	106	V ugm-3
+2016/2/10	154	V ugm-3	72	V ugm-3	68	V ugm-3	129	V ugm-3	67	V ugm-3	48	V ugm-3		V ugm-3	109	V ugm-3	333	V ugm-3	82	V ugm-3	46	V ugm-3	125	V ugm-3	121	V ugm-3	170	V ugm-3
+2016/2/11	339	V ugm-3	242	V ugm-3	159	V ugm-3		V ugm-3	92	V ugm-3	127	V ugm-3		V ugm-3	330	V ugm-3	694	V ugm-3	200	V ugm-3	88	V ugm-3	165	V ugm-3	173	V ugm-3	221	V ugm-3
+2016/2/12	336	V ugm-3	133	V ugm-3	67	V ugm-3	115	V ugm-3	51	V ugm-3	95	V ugm-3		V ugm-3	162	V ugm-3	344	V ugm-3	82	V ugm-3	48	V ugm-3	109	V ugm-3	239	V ugm-3	141	V ugm-3
+2016/2/13	248	V ugm-3	80	V ugm-3	48	V ugm-3	106	V ugm-3	40	V ugm-3	50	V ugm-3		V ugm-3	58	V ugm-3	200	V ugm-3	68	V ugm-3	43	V ugm-3	89	V ugm-3	167	V ugm-3	139	V ugm-3
+2016/2/14	220	V ugm-3	47	V ugm-3	21	V ugm-3	83	V ugm-3	14	V ugm-3	16	V ugm-3		V ugm-3	17	V ugm-3	73	V ugm-3	24	V ugm-3	24	V ugm-3	54	V ugm-3	110	V ugm-3	107	V ugm-3
+2016/2/15	438	V ugm-3	69	V ugm-3	38	V ugm-3	122	V ugm-3	25	V ugm-3	20	V ugm-3		V ugm-3	29	V ugm-3	141	V ugm-3	44	V ugm-3	37	V ugm-3	76	V ugm-3	218	V ugm-3	156	V ugm-3
+2016/2/16	318	V ugm-3	226	V ugm-3	109	V ugm-3	100	V ugm-3	79	V ugm-3	83	V ugm-3		V ugm-3	268	V ugm-3	535	V ugm-3	118	V ugm-3	71	V ugm-3	117	V ugm-3	132	V ugm-3	147	V ugm-3
+2016/2/17	155	V ugm-3	150	V ugm-3	51	V ugm-3	62	V ugm-3	36	V ugm-3	44	V ugm-3		V ugm-3	202	V ugm-3	479	V ugm-3	44	V ugm-3	21	V ugm-3	73	V ugm-3	63	V ugm-3	52	V ugm-3
+2016/2/18	257	V ugm-3	124	V ugm-3	77	V ugm-3	126	V ugm-3	71	V ugm-3	74	V ugm-3		V ugm-3	147	V ugm-3	280	V ugm-3	90	V ugm-3	47	V ugm-3	119	V ugm-3	236	V ugm-3	173	V ugm-3
+2016/2/19	148	V ugm-3	125	V ugm-3	53	V ugm-3	55	V ugm-3	27	V ugm-3	39	V ugm-3		V ugm-3	226	V ugm-3	497	V ugm-3	62	V ugm-3	29	V ugm-3	71	V ugm-3	88	V ugm-3	72	V ugm-3
+2016/2/20	41	V ugm-3	44	V ugm-3	12	V ugm-3	28	V ugm-3	15	V ugm-3	15	V ugm-3		V ugm-3	64	V ugm-3	312	V ugm-3	19	V ugm-3	7	V ugm-3	37	V ugm-3	21	V ugm-3	46	V ugm-3
+2016/2/21	28	V ugm-3	33	V ugm-3	7	V ugm-3	10	V ugm-3	9	V ugm-3	11	V ugm-3		V ugm-3	52	V ugm-3	220	V ugm-3	12	V ugm-3	6	V ugm-3	16	V ugm-3	14	V ugm-3	27	V ugm-3
+2016/2/22	97	V ugm-3	58	V ugm-3	41	V ugm-3	94	V ugm-3	31	V ugm-3	29	V ugm-3		V ugm-3	44	V ugm-3	196	V ugm-3	40	V ugm-3	21	V ugm-3	84	V ugm-3	117	V ugm-3	126	V ugm-3
+2016/2/23	267	V ugm-3	124	V ugm-3	92	V ugm-3	118	V ugm-3	64	V ugm-3	58	V ugm-3		V ugm-3	106	V ugm-3	196	V ugm-3	78	V ugm-3	56	V ugm-3	98	V ugm-3	224	V ugm-3	212	V ugm-3
+2016/2/24	442	V ugm-3	241	V ugm-3	240	V ugm-3	242	V ugm-3	156	V ugm-3	170	V ugm-3		V ugm-3	257	V ugm-3	382	V ugm-3	299	V ugm-3	205	V ugm-3	211	V ugm-3	476	V ugm-3	405	V ugm-3
+2016/2/25	380	V ugm-3	228	V ugm-3	178	V ugm-3	172	V ugm-3	149	V ugm-3	117	V ugm-3		V ugm-3	239	V ugm-3	438	V ugm-3	203	V ugm-3	107	V ugm-3	197	V ugm-3	314	V ugm-3	305	V ugm-3
+2016/2/26	408	V ugm-3	265	V ugm-3	151	V ugm-3	129	V ugm-3	83	V ugm-3	206	V ugm-3		V ugm-3	284	V ugm-3	445	V ugm-3	122	V ugm-3	71	V ugm-3	135	V ugm-3	280	V ugm-3	226	V ugm-3
+2016/2/27	101	V ugm-3	54	V ugm-3	32	V ugm-3	76	V ugm-3	31	V ugm-3	32	V ugm-3	47	V ugm-3	43	V ugm-3	96	V ugm-3	45	V ugm-3	37	V ugm-3	64	V ugm-3	145	V ugm-3	130	V ugm-3
+2016/2/28	64	V ugm-3	55	V ugm-3	16	V ugm-3	59	V ugm-3	14	V ugm-3	19	V ugm-3	24	V ugm-3	18	V ugm-3	52	V ugm-3	24	V ugm-3	23	V ugm-3	41	V ugm-3	87	V ugm-3	92	V ugm-3
+2016/2/29	222	V ugm-3	118	V ugm-3	43	V ugm-3	87	V ugm-3	28	V ugm-3	41	V ugm-3	70	V ugm-3	106	V ugm-3	217	V ugm-3	49	V ugm-3	45	V ugm-3	83	V ugm-3	208	V ugm-3	146	V ugm-3
+2016/3/1	65	V ugm-3	68	V ugm-3	22	V ugm-3	33	V ugm-3	18	V ugm-3	24	V ugm-3	28	V ugm-3	98	V ugm-3	425	V ugm-3	28	V ugm-3	12	V ugm-3	43	V ugm-3	26	V ugm-3	49	V ugm-3
+2016/3/2	60	V ugm-3	45	V ugm-3	24	V ugm-3	50	V ugm-3	23	V ugm-3	19	V ugm-3	26	V ugm-3	61	V ugm-3	356	V ugm-3	30	V ugm-3	11	V ugm-3	63	V ugm-3	46	V ugm-3	80	V ugm-3
+2016/3/3	129	V ugm-3	77	V ugm-3	31	V ugm-3	82	V ugm-3	23	V ugm-3	26	V ugm-3	42	V ugm-3	86	V ugm-3	331	V ugm-3	33	V ugm-3	18	V ugm-3	65	V ugm-3	108	V ugm-3	83	V ugm-3
+2016/3/4	124	V ugm-3	90	V ugm-3	44	V ugm-3	57	V ugm-3	39	V ugm-3	39	V ugm-3	54	V ugm-3	145	V ugm-3	498	V ugm-3	48	V ugm-3	26	V ugm-3	64	V ugm-3	74	V ugm-3	106	V ugm-3
+2016/3/5	246	V ugm-3	61	V ugm-3	46	V ugm-3	130	V ugm-3	34	V ugm-3	27	V ugm-3	68	V ugm-3	43	V ugm-3	109	V ugm-3	46	V ugm-3	52	V ugm-3	72	V ugm-3	214	V ugm-3	136	V ugm-3
+2016/3/6	153	V ugm-3	54	V ugm-3	36	V ugm-3	95	V ugm-3	29	V ugm-3	30	V ugm-3	53	V ugm-3	32	V ugm-3	139	V ugm-3	40	V ugm-3	31	V ugm-3	61	V ugm-3	134	V ugm-3	104	V ugm-3
+2016/3/7	317	V ugm-3	66	V ugm-3	45	V ugm-3	142	V ugm-3	32	V ugm-3	30	V ugm-3	81	V ugm-3	52	V ugm-3	127	V ugm-3	55	V ugm-3	43	V ugm-3	86	V ugm-3	241	V ugm-3	178	V ugm-3
+2016/3/8	170	V ugm-3	157	V ugm-3	76	V ugm-3	83	V ugm-3	54	V ugm-3	65	V ugm-3	129	V ugm-3	241	V ugm-3	567	V ugm-3	92	V ugm-3	45	V ugm-3	95	V ugm-3	84	V ugm-3	117	V ugm-3
+2016/3/9	225	V ugm-3	85	V ugm-3	31	V ugm-3	84	V ugm-3	22	V ugm-3	32	V ugm-3	39	V ugm-3	93	V ugm-3	235	V ugm-3	47	V ugm-3	30	V ugm-3	70	V ugm-3	126	V ugm-3	101	V ugm-3
+2016/3/10	397	V ugm-3	118	V ugm-3	92	V ugm-3	149	V ugm-3	52	V ugm-3	45	V ugm-3	102	V ugm-3	64	V ugm-3	219	V ugm-3	76	V ugm-3	53	V ugm-3	101	V ugm-3	290	V ugm-3	193	V ugm-3
+2016/3/11	302	V ugm-3	201	V ugm-3	172	V ugm-3	153	V ugm-3	125	V ugm-3	83	V ugm-3	227	V ugm-3	216	V ugm-3	302	V ugm-3	114	V ugm-3	142	V ugm-3	145	V ugm-3	348	V ugm-3	212	V ugm-3
+2016/3/12	236	V ugm-3	123	V ugm-3	98	V ugm-3	114	V ugm-3	78	V ugm-3	67	V ugm-3	129	V ugm-3	171	V ugm-3	258	V ugm-3	108	V ugm-3	67	V ugm-3	98	V ugm-3	230	V ugm-3	161	V ugm-3
+2016/3/13	153	V ugm-3	56	V ugm-3	33	V ugm-3	70	V ugm-3	28	V ugm-3	39	V ugm-3	67	V ugm-3	49	V ugm-3	128	V ugm-3	51	V ugm-3	49	V ugm-3	61	V ugm-3	113	V ugm-3	121	V ugm-3
+2016/3/14	153	V ugm-3	53	V ugm-3	26	V ugm-3	64	V ugm-3	20	V ugm-3	26	V ugm-3	43	V ugm-3	36	V ugm-3	143	V ugm-3	38	V ugm-3	30	V ugm-3	64	V ugm-3	119	V ugm-3	122	V ugm-3
+2016/3/15	226	V ugm-3	80	V ugm-3	52	V ugm-3	100	V ugm-3	26	V ugm-3	30	V ugm-3	47	V ugm-3	35	V ugm-3	100	V ugm-3	45	V ugm-3	44	V ugm-3	80	V ugm-3	180	V ugm-3	179	V ugm-3
+2016/3/16	123	V ugm-3	51	V ugm-3	21	V ugm-3		V ugm-3	18	V ugm-3	22	V ugm-3	35	V ugm-3	33	V ugm-3	107	V ugm-3	33	V ugm-3	28	V ugm-3	63	V ugm-3	131	V ugm-3	127	V ugm-3
+2016/3/17	214	V ugm-3	99	V ugm-3	54	V ugm-3		V ugm-3	39	V ugm-3	41	V ugm-3	64	V ugm-3	44	V ugm-3	202	V ugm-3	56	V ugm-3	45	V ugm-3	87	V ugm-3	191	V ugm-3	145	V ugm-3
+2016/3/18	275	V ugm-3	84	V ugm-3	31	V ugm-3	118	V ugm-3	24	V ugm-3	27	V ugm-3	48	V ugm-3	33	V ugm-3	107	V ugm-3	44	V ugm-3	36	V ugm-3	70	V ugm-3	206	V ugm-3	195	V ugm-3
+2016/3/19	145	V ugm-3	50	V ugm-3	17	V ugm-3	74	V ugm-3	13	V ugm-3	14	V ugm-3	25	V ugm-3	20	V ugm-3	56	V ugm-3	25	V ugm-3	22	V ugm-3	47	V ugm-3	117	V ugm-3	134	V ugm-3
+2016/3/20	178	V ugm-3	59	V ugm-3	18	V ugm-3	83	V ugm-3	12	V ugm-3	14	V ugm-3	33	V ugm-3	25	V ugm-3	63	V ugm-3	25	V ugm-3	22	V ugm-3	42	V ugm-3	108	V ugm-3	124	V ugm-3
+2016/3/21	222	V ugm-3	67	V ugm-3	62	V ugm-3	137	V ugm-3	52	V ugm-3	38	V ugm-3	81	V ugm-3	62	V ugm-3	188	V ugm-3	58	V ugm-3	44	V ugm-3	85	V ugm-3	166	V ugm-3	170	V ugm-3
+2016/3/22	302	V ugm-3	124	V ugm-3	107	V ugm-3	129	V ugm-3	85	V ugm-3	45	V ugm-3	136	V ugm-3	163	V ugm-3	227	V ugm-3	113	V ugm-3	68	V ugm-3	125	V ugm-3	207	V ugm-3	201	V ugm-3
+2016/3/23	261	V ugm-3	99	V ugm-3	85	V ugm-3	135	V ugm-3	74	V ugm-3	46	V ugm-3	99	V ugm-3	96	V ugm-3	255	V ugm-3	68	V ugm-3	58	V ugm-3	98	V ugm-3	227	V ugm-3	204	V ugm-3
+2016/3/24	125	V ugm-3	102	V ugm-3	43	V ugm-3	59	V ugm-3	35	V ugm-3	39	V ugm-3	56	V ugm-3	169	V ugm-3	557	V ugm-3	48	V ugm-3	22	V ugm-3	54	V ugm-3	46	V ugm-3	79	V ugm-3
+2016/3/25	112	V ugm-3	63	V ugm-3	22	V ugm-3	67	V ugm-3	17	V ugm-3	19	V ugm-3	36	V ugm-3	69	V ugm-3	229	V ugm-3	25	V ugm-3	16	V ugm-3	39	V ugm-3		V ugm-3	70	V ugm-3
+2016/3/26	57	V ugm-3	62	V ugm-3	14	V ugm-3	27	V ugm-3	10	V ugm-3	20	V ugm-3	30	V ugm-3	83	V ugm-3	215	V ugm-3	18	V ugm-3	17	V ugm-3	23	V ugm-3	19	V ugm-3	22	V ugm-3
+2016/3/27	40	V ugm-3	50	V ugm-3	10	V ugm-3	21	V ugm-3	6	V ugm-3	12	V ugm-3	30	V ugm-3	81	V ugm-3	207	V ugm-3	13	V ugm-3	12	V ugm-3	16	V ugm-3	17	V ugm-3	19	V ugm-3
+2016/3/28	42	V ugm-3	38	V ugm-3	12	V ugm-3	21	V ugm-3	9	V ugm-3	11	V ugm-3	20	V ugm-3	68	V ugm-3	234	V ugm-3	15	V ugm-3	10	V ugm-3	27	V ugm-3	23	V ugm-3	34	V ugm-3
+2016/3/29	75	V ugm-3	70	V ugm-3	18	V ugm-3	33	V ugm-3	12	V ugm-3	21	V ugm-3	33	V ugm-3	112	V ugm-3	467	V ugm-3	27	V ugm-3	13	V ugm-3	34	V ugm-3	25	V ugm-3	59	V ugm-3
+2016/3/30	112	V ugm-3	84	V ugm-3	30	V ugm-3	63	V ugm-3	18	V ugm-3	42	V ugm-3	55	V ugm-3	132	V ugm-3	431	V ugm-3	46	V ugm-3	15	V ugm-3	61	V ugm-3	50	V ugm-3	95	V ugm-3
+2016/3/31	306	V ugm-3	82	V ugm-3	59	V ugm-3	125	V ugm-3	41	V ugm-3	34	V ugm-3	89	V ugm-3	70	V ugm-3	165	V ugm-3	56	V ugm-3	46	V ugm-3	72	V ugm-3	235	V ugm-3	169	V ugm-3
+2016/4/1	187	V ugm-3	163	V ugm-3	82	V ugm-3	59	V ugm-3	38	V ugm-3	87	V ugm-3	153	V ugm-3	234	V ugm-3	438	V ugm-3	82	V ugm-3	59	V ugm-3	77	V ugm-3	114	V ugm-3	116	V ugm-3
+2016/4/2	154	V ugm-3	84	V ugm-3	28	V ugm-3	45	V ugm-3	15	V ugm-3	27	V ugm-3	37	V ugm-3	134	V ugm-3	264	V ugm-3	32	V ugm-3	23	V ugm-3	38	V ugm-3	50	V ugm-3	40	V ugm-3
+2016/4/3	148	V ugm-3	80	V ugm-3	32	V ugm-3	46	V ugm-3	18	V ugm-3	32	V ugm-3	35	V ugm-3	130	V ugm-3	232	V ugm-3	37	V ugm-3	21	V ugm-3	36	V ugm-3	58	V ugm-3	47	V ugm-3
+2016/4/4	100	V ugm-3	114	V ugm-3	39	V ugm-3	34	V ugm-3	17	V ugm-3	31	V ugm-3	43	V ugm-3	150	V ugm-3	397	V ugm-3	29	V ugm-3	20	V ugm-3	38	V ugm-3	34	V ugm-3	43	V ugm-3
+2016/4/5	80	V ugm-3	55	V ugm-3	53	V ugm-3	67	V ugm-3	27	V ugm-3	24	V ugm-3	37	V ugm-3	75	V ugm-3	305	V ugm-3	32	V ugm-3	18	V ugm-3	65	V ugm-3	71	V ugm-3	110	V ugm-3
+2016/4/6	66	V ugm-3	50	V ugm-3	22	V ugm-3	34	V ugm-3	14	V ugm-3	18	V ugm-3	24	V ugm-3	97	V ugm-3	406	V ugm-3	25	V ugm-3	16	V ugm-3	43	V ugm-3	27	V ugm-3	68	V ugm-3
+2016/4/7	92	V ugm-3	59	V ugm-3	39	V ugm-3	63	V ugm-3	28	V ugm-3	26	V ugm-3	36	V ugm-3	95	V ugm-3	413	V ugm-3	39	V ugm-3	19	V ugm-3	77	V ugm-3	55	V ugm-3	113	V ugm-3
+2016/4/8	152	V ugm-3	93	V ugm-3	59	V ugm-3	71	V ugm-3	43	V ugm-3	31	V ugm-3	63	V ugm-3	100	V ugm-3	419	V ugm-3	61	V ugm-3	23	V ugm-3	87	V ugm-3	103	V ugm-3	121	V ugm-3
+2016/4/9	87	V ugm-3	75	V ugm-3	20	V ugm-3	26	V ugm-3	13	V ugm-3	22	V ugm-3	41	V ugm-3	123	V ugm-3	325	V ugm-3	26	V ugm-3	19	V ugm-3	37	V ugm-3	29	V ugm-3	48	V ugm-3
+2016/4/10	151	V ugm-3	75	V ugm-3	35	V ugm-3	54	V ugm-3	15	V ugm-3	33	V ugm-3	47	V ugm-3	93	V ugm-3	182	V ugm-3	36	V ugm-3	26	V ugm-3	45	V ugm-3	74	V ugm-3	60	V ugm-3
+2016/4/11	200	V ugm-3	96	V ugm-3	46	V ugm-3	73	V ugm-3	35	V ugm-3	48	V ugm-3	88	V ugm-3	147	V ugm-3	374	V ugm-3	61	V ugm-3	39	V ugm-3	81	V ugm-3	127	V ugm-3	91	V ugm-3
+2016/4/12	160	V ugm-3	114	V ugm-3	44	V ugm-3	41	V ugm-3	29	V ugm-3	44	V ugm-3	61	V ugm-3	192	V ugm-3	464	V ugm-3	36	V ugm-3	25	V ugm-3	52	V ugm-3	59	V ugm-3	93	V ugm-3
+2016/4/13	231	V ugm-3	157	V ugm-3	82	V ugm-3	75	V ugm-3	55	V ugm-3	58	V ugm-3	151	V ugm-3	235	V ugm-3	414	V ugm-3	86	V ugm-3	41	V ugm-3	93	V ugm-3	119	V ugm-3	195	V ugm-3
+2016/4/14	198	V ugm-3	110	V ugm-3	39	V ugm-3	46	V ugm-3	23	V ugm-3	37	V ugm-3	66	V ugm-3	187	V ugm-3		V ugm-3	48	V ugm-3	33	V ugm-3	57	V ugm-3	79	V ugm-3	83	V ugm-3
+2016/4/15	284	V ugm-3	92	V ugm-3	40	V ugm-3	80	V ugm-3	26	V ugm-3	36	V ugm-3	63	V ugm-3	110	V ugm-3		V ugm-3	45	V ugm-3	25	V ugm-3	58	V ugm-3	94	V ugm-3	138	V ugm-3
+2016/4/16	207	V ugm-3	40	V ugm-3	19	V ugm-3	112	V ugm-3	14	V ugm-3	14	V ugm-3	46	V ugm-3	26	V ugm-3	114	V ugm-3	29	V ugm-3	21	V ugm-3	49	V ugm-3	165	V ugm-3	143	V ugm-3
+2016/4/17	155	V ugm-3	61	V ugm-3	36	V ugm-3	69	V ugm-3	32	V ugm-3	27	V ugm-3	68	V ugm-3	97	V ugm-3	155	V ugm-3	46	V ugm-3	30	V ugm-3	50	V ugm-3	108	V ugm-3	132	V ugm-3
+2016/4/18	101	V ugm-3	77	V ugm-3	37	V ugm-3	62	V ugm-3	30	V ugm-3	43	V ugm-3	39	V ugm-3	113	V ugm-3	432	V ugm-3	53	V ugm-3	22	V ugm-3	63	V ugm-3	53	V ugm-3	121	V ugm-3
+2016/4/19	236	V ugm-3	61	V ugm-3	29	V ugm-3	78	V ugm-3	21	V ugm-3	18	V ugm-3	48	V ugm-3	35	V ugm-3	164	V ugm-3	36	V ugm-3	25	V ugm-3	55	V ugm-3	170	V ugm-3	116	V ugm-3
+2016/4/20	176	V ugm-3	59	V ugm-3	35	V ugm-3	77	V ugm-3	29	V ugm-3	25	V ugm-3	59	V ugm-3	58	V ugm-3	209	V ugm-3	43	V ugm-3	31	V ugm-3	60	V ugm-3	154	V ugm-3	112	V ugm-3
+2016/4/21	151	V ugm-3	54	V ugm-3	26	V ugm-3	76	V ugm-3	21	V ugm-3	27	V ugm-3	52	V ugm-3	44	V ugm-3	193	V ugm-3	42	V ugm-3	36	V ugm-3	64	V ugm-3	143	V ugm-3	108	V ugm-3
+2016/4/22	154	V ugm-3	51	V ugm-3	20	V ugm-3	72	V ugm-3	15	V ugm-3	23	V ugm-3	46	V ugm-3	39	V ugm-3	145	V ugm-3	42	V ugm-3	30	V ugm-3	59	V ugm-3	157	V ugm-3	121	V ugm-3
+2016/4/23	232	V ugm-3	54	V ugm-3	24	V ugm-3	79	V ugm-3	16	V ugm-3	20	V ugm-3	45	V ugm-3	23	V ugm-3	85	V ugm-3	33	V ugm-3	25	V ugm-3	53	V ugm-3	159	V ugm-3	117	V ugm-3
+2016/4/24	145	V ugm-3	40	V ugm-3	27	V ugm-3	73	V ugm-3	18	V ugm-3	14	V ugm-3	32	V ugm-3	23	V ugm-3	88	V ugm-3	27	V ugm-3	20	V ugm-3	39	V ugm-3	112	V ugm-3	104	V ugm-3
+2016/4/25	142	V ugm-3	57	V ugm-3	37	V ugm-3	85	V ugm-3	27	V ugm-3	26	V ugm-3	33	V ugm-3	60	V ugm-3	254	V ugm-3	38	V ugm-3	20	V ugm-3	62	V ugm-3	90	V ugm-3	132	V ugm-3
+2016/4/26	187	V ugm-3	40	V ugm-3	26	V ugm-3	111	V ugm-3	19	V ugm-3	18	V ugm-3	42	V ugm-3	18	V ugm-3	114	V ugm-3	30	V ugm-3	20	V ugm-3	60	V ugm-3	167	V ugm-3	120	V ugm-3
+2016/4/27	231	V ugm-3	62	V ugm-3	29	V ugm-3	92	V ugm-3	22	V ugm-3	25	V ugm-3	45	V ugm-3	29	V ugm-3	183	V ugm-3	37	V ugm-3	23	V ugm-3	62	V ugm-3	149	V ugm-3	134	V ugm-3
+2016/4/28	100	V ugm-3	68	V ugm-3	41	V ugm-3	49	V ugm-3	26	V ugm-3	26	V ugm-3	46	V ugm-3	93	V ugm-3	431	V ugm-3	38	V ugm-3	23	V ugm-3	47	V ugm-3	48	V ugm-3	95	V ugm-3
+2016/4/29	75	V ugm-3	46	V ugm-3	24	V ugm-3	49	V ugm-3	19	V ugm-3	20	V ugm-3	43	V ugm-3	76	V ugm-3	359	V ugm-3	27	V ugm-3	19	V ugm-3	43	V ugm-3	53	V ugm-3	92	V ugm-3
+2016/4/30	184	V ugm-3	47	V ugm-3	32	V ugm-3	80	V ugm-3	25	V ugm-3	23	V ugm-3	56	V ugm-3	50	V ugm-3	113	V ugm-3	45	V ugm-3	25	V ugm-3	47	V ugm-3	140	V ugm-3	121	V ugm-3
+2016/5/1	96	V ugm-3	93	V ugm-3	32	V ugm-3	41	V ugm-3	26	V ugm-3	30	V ugm-3	64	V ugm-3	143	V ugm-3	267	V ugm-3	40	V ugm-3	24	V ugm-3	32	V ugm-3	43	V ugm-3	74	V ugm-3
+2016/5/2	44	V ugm-3	44	V ugm-3	13	V ugm-3	21	V ugm-3	9	V ugm-3	14	V ugm-3	23	V ugm-3	63	V ugm-3	194	V ugm-3	16	V ugm-3	15	V ugm-3	22	V ugm-3	19	V ugm-3	40	V ugm-3
+2016/5/3	116	V ugm-3	61	V ugm-3	39	V ugm-3	67	V ugm-3	27	V ugm-3	29	V ugm-3	40	V ugm-3	66	V ugm-3	275	V ugm-3	40	V ugm-3	20	V ugm-3	54	V ugm-3	84	V ugm-3	136	V ugm-3
+2016/5/4	208	V ugm-3	117	V ugm-3	54	V ugm-3	51	V ugm-3	27	V ugm-3	46	V ugm-3	67	V ugm-3	243	V ugm-3	439	V ugm-3	49	V ugm-3	31	V ugm-3	45	V ugm-3	61	V ugm-3	73	V ugm-3
+2016/5/5	267	V ugm-3	95	V ugm-3	68	V ugm-3	69	V ugm-3	31	V ugm-3	48	V ugm-3	88	V ugm-3	153	V ugm-3	363	V ugm-3	64	V ugm-3	47	V ugm-3	69	V ugm-3	158	V ugm-3		V ugm-3
+2016/5/6	237	V ugm-3	96	V ugm-3	82	V ugm-3	94	V ugm-3	56	V ugm-3	49	V ugm-3	92	V ugm-3	146	V ugm-3	280	V ugm-3	82	V ugm-3	53	V ugm-3	96	V ugm-3	240	V ugm-3		V ugm-3
+2016/5/7	199	V ugm-3	75	V ugm-3	52	V ugm-3	65	V ugm-3	43	V ugm-3	40	V ugm-3	67	V ugm-3	134	V ugm-3	183	V ugm-3	60	V ugm-3	54	V ugm-3	65	V ugm-3	114	V ugm-3	88	V ugm-3
+2016/5/8	132	V ugm-3	60	V ugm-3	50	V ugm-3	56	V ugm-3	36	V ugm-3	34	V ugm-3	54	V ugm-3	86	V ugm-3	170	V ugm-3	49	V ugm-3	35	V ugm-3	49	V ugm-3	113	V ugm-3	83	V ugm-3
+2016/5/9	196	V ugm-3	79	V ugm-3	70	V ugm-3	74	V ugm-3	55	V ugm-3	43	V ugm-3	76	V ugm-3	95	V ugm-3		V ugm-3	66	V ugm-3	53	V ugm-3	78	V ugm-3	193	V ugm-3	115	V ugm-3
+2016/5/10	208	V ugm-3	67	V ugm-3	58	V ugm-3	79	V ugm-3	45	V ugm-3	35	V ugm-3	75	V ugm-3	77	V ugm-3	297	V ugm-3	67	V ugm-3	49	V ugm-3	70	V ugm-3	190	V ugm-3	113	V ugm-3
+2016/5/11	241	V ugm-3	80	V ugm-3	47	V ugm-3	76	V ugm-3	39	V ugm-3	38	V ugm-3	63	V ugm-3		V ugm-3	271	V ugm-3	61	V ugm-3	42	V ugm-3	61	V ugm-3		V ugm-3	122	V ugm-3
+2016/5/12	188	V ugm-3	50	V ugm-3	30	V ugm-3	59	V ugm-3	23	V ugm-3	17	V ugm-3	31	V ugm-3		V ugm-3	89	V ugm-3	28	V ugm-3	33	V ugm-3	50	V ugm-3	181	V ugm-3	135	V ugm-3
+2016/5/13	208	V ugm-3	45	V ugm-3	14	V ugm-3	58	V ugm-3	14	V ugm-3	11	V ugm-3	19	V ugm-3		V ugm-3	63	V ugm-3	17	V ugm-3	18	V ugm-3	35	V ugm-3	145	V ugm-3	97	V ugm-3
+2016/5/14	179	V ugm-3	51	V ugm-3	17	V ugm-3	59	V ugm-3	11	V ugm-3	14	V ugm-3	29	V ugm-3	19	V ugm-3	56	V ugm-3	16	V ugm-3	16	V ugm-3	29	V ugm-3	149	V ugm-3	102	V ugm-3
+2016/5/15	140	V ugm-3	61	V ugm-3	30	V ugm-3	57	V ugm-3	22	V ugm-3	35	V ugm-3	60	V ugm-3	67	V ugm-3	124	V ugm-3	31	V ugm-3	23	V ugm-3	31	V ugm-3	100	V ugm-3	93	V ugm-3
+2016/5/16	202	V ugm-3	82	V ugm-3	40	V ugm-3	68	V ugm-3	31	V ugm-3	33	V ugm-3	46	V ugm-3	72	V ugm-3	171	V ugm-3	41	V ugm-3	28	V ugm-3	52	V ugm-3	167	V ugm-3	160	V ugm-3
+2016/5/17	125	V ugm-3	78	V ugm-3	34	V ugm-3	56	V ugm-3	27	V ugm-3	27	V ugm-3	42	V ugm-3	101	V ugm-3	337	V ugm-3	38	V ugm-3	23	V ugm-3	39	V ugm-3	54	V ugm-3	106	V ugm-3
+2016/5/18	134	V ugm-3	86	V ugm-3	28	V ugm-3		V ugm-3	19	V ugm-3	26	V ugm-3	36	V ugm-3	132	V ugm-3	348	V ugm-3	27	V ugm-3	20	V ugm-3	34	V ugm-3	50	V ugm-3	85	V ugm-3
+2016/5/19	140	V ugm-3	61	V ugm-3	26	V ugm-3		V ugm-3	20	V ugm-3	19	V ugm-3	37	V ugm-3	74	V ugm-3	341	V ugm-3	24	V ugm-3	18	V ugm-3	31	V ugm-3	86	V ugm-3		V ugm-3
+2016/5/20	80	V ugm-3	62	V ugm-3	17	V ugm-3	23	V ugm-3	13	V ugm-3	17	V ugm-3	23	V ugm-3	96	V ugm-3	408	V ugm-3	19	V ugm-3	14	V ugm-3	20	V ugm-3	23	V ugm-3		V ugm-3
+2016/5/21	80	V ugm-3	61	V ugm-3	13	V ugm-3	20	V ugm-3	8	V ugm-3	16	V ugm-3	29	V ugm-3	94	V ugm-3	232	V ugm-3	16	V ugm-3	14	V ugm-3	16	V ugm-3	17	V ugm-3		V ugm-3
+2016/5/22	90	V ugm-3	41	V ugm-3	20	V ugm-3	42	V ugm-3	15	V ugm-3	17	V ugm-3	37	V ugm-3	36	V ugm-3	123	V ugm-3	18	V ugm-3	15	V ugm-3	23	V ugm-3	81	V ugm-3		V ugm-3
+2016/5/23	213	V ugm-3	52	V ugm-3	24	V ugm-3	73	V ugm-3	15	V ugm-3	15	V ugm-3		V ugm-3	22	V ugm-3	67	V ugm-3	24	V ugm-3	20	V ugm-3	40	V ugm-3	195	V ugm-3		V ugm-3
+2016/5/24	198	V ugm-3	56	V ugm-3	19	V ugm-3	62	V ugm-3	12	V ugm-3	14	V ugm-3		V ugm-3	19	V ugm-3	62	V ugm-3	21	V ugm-3	23	V ugm-3	40	V ugm-3	242	V ugm-3	121	V ugm-3
+2016/5/25	291	V ugm-3	65	V ugm-3	23	V ugm-3	76	V ugm-3	17	V ugm-3	14	V ugm-3	33	V ugm-3	20	V ugm-3	99	V ugm-3	27	V ugm-3	23	V ugm-3	45	V ugm-3	237	V ugm-3	157	V ugm-3
+2016/5/26	255	V ugm-3	82	V ugm-3	42	V ugm-3	56	V ugm-3	24	V ugm-3	36	V ugm-3	51	V ugm-3	131	V ugm-3	369	V ugm-3	48	V ugm-3	29	V ugm-3	51	V ugm-3	111	V ugm-3	112	V ugm-3
+2016/5/27	194	V ugm-3	65	V ugm-3	27	V ugm-3	51	V ugm-3	23	V ugm-3	24	V ugm-3	48	V ugm-3	55	V ugm-3	153	V ugm-3	38	V ugm-3	36	V ugm-3	44	V ugm-3	177	V ugm-3	137	V ugm-3
+2016/5/28	145	V ugm-3	62	V ugm-3	24	V ugm-3	39	V ugm-3	18	V ugm-3	20	V ugm-3	33	V ugm-3	23	V ugm-3	81	V ugm-3	29	V ugm-3	33	V ugm-3	35	V ugm-3	150	V ugm-3	105	V ugm-3
+2016/5/29	125	V ugm-3	37	V ugm-3	13	V ugm-3	58	V ugm-3	10	V ugm-3	8	V ugm-3	17	V ugm-3	10	V ugm-3	43	V ugm-3	13	V ugm-3	16	V ugm-3	22	V ugm-3	103	V ugm-3	70	V ugm-3
+2016/5/30	125	V ugm-3	27	V ugm-3	9	V ugm-3	50	V ugm-3	7	V ugm-3	6	V ugm-3	14	V ugm-3	8	V ugm-3	40	V ugm-3	14	V ugm-3	10	V ugm-3	19	V ugm-3	91	V ugm-3	61	V ugm-3
+2016/5/31	210	V ugm-3	36	V ugm-3	20	V ugm-3	74	V ugm-3	12	V ugm-3		V ugm-3	22	V ugm-3	13	V ugm-3	79	V ugm-3	21	V ugm-3	15	V ugm-3	35	V ugm-3	150	V ugm-3	84	V ugm-3
+2016/6/1	221	V ugm-3	43	V ugm-3	17	V ugm-3	61	V ugm-3	12	V ugm-3		V ugm-3	20	V ugm-3	14	V ugm-3	71	V ugm-3	19	V ugm-3	15	V ugm-3	36	V ugm-3	173	V ugm-3	98	V ugm-3
+2016/6/2	229	V ugm-3	50	V ugm-3	11	V ugm-3	49	V ugm-3	7	V ugm-3	8	V ugm-3	16	V ugm-3	12	V ugm-3	58	V ugm-3	15	V ugm-3	13	V ugm-3	36	V ugm-3	145	V ugm-3	89	V ugm-3
+2016/6/3	293	V ugm-3	71	V ugm-3	19	V ugm-3	79	V ugm-3	13	V ugm-3	12	V ugm-3	34	V ugm-3	18	V ugm-3	90	V ugm-3	25	V ugm-3	19	V ugm-3	40	V ugm-3	251	V ugm-3	142	V ugm-3
+2016/6/4	225	V ugm-3	57	V ugm-3	26	V ugm-3	86	V ugm-3	17	V ugm-3	12	V ugm-3	31	V ugm-3	19	V ugm-3	82	V ugm-3	26	V ugm-3	20	V ugm-3	32	V ugm-3	208	V ugm-3	153	V ugm-3
+2016/6/5	136	V ugm-3	48	V ugm-3	16	V ugm-3	53	V ugm-3	12	V ugm-3	15	V ugm-3	30	V ugm-3	27	V ugm-3	86	V ugm-3	24	V ugm-3	22	V ugm-3	22	V ugm-3	110	V ugm-3	95	V ugm-3
+2016/6/6	220	V ugm-3	68	V ugm-3	25	V ugm-3	64	V ugm-3	23	V ugm-3	28	V ugm-3	65	V ugm-3	94	V ugm-3	250	V ugm-3	51	V ugm-3	38	V ugm-3	45	V ugm-3	176	V ugm-3	94	V ugm-3
+2016/6/7	317	V ugm-3	106	V ugm-3	74	V ugm-3	106	V ugm-3	50	V ugm-3	55	V ugm-3	94	V ugm-3	119	V ugm-3	292	V ugm-3	102	V ugm-3	41	V ugm-3	74	V ugm-3	195	V ugm-3	157	V ugm-3
+2016/6/8	291	V ugm-3	78	V ugm-3	60	V ugm-3	98	V ugm-3	39	V ugm-3	34	V ugm-3	71	V ugm-3	63	V ugm-3	216	V ugm-3	66	V ugm-3	54	V ugm-3	72	V ugm-3	199	V ugm-3	158	V ugm-3
+2016/6/9	259	V ugm-3	78	V ugm-3	30	V ugm-3	69	V ugm-3	27	V ugm-3	31	V ugm-3	64	V ugm-3	101	V ugm-3		V ugm-3	57	V ugm-3	43	V ugm-3	44	V ugm-3	183	V ugm-3	121	V ugm-3
+2016/6/10	268	V ugm-3	116	V ugm-3	67	V ugm-3	58	V ugm-3	36	V ugm-3	65	V ugm-3	54	V ugm-3	151	V ugm-3	410	V ugm-3	52	V ugm-3	28	V ugm-3	37	V ugm-3	114	V ugm-3	129	V ugm-3
+2016/6/11	195	V ugm-3	96	V ugm-3	52	V ugm-3	59	V ugm-3	30	V ugm-3	50	V ugm-3	39	V ugm-3	81	V ugm-3	208	V ugm-3	33	V ugm-3	23	V ugm-3	36	V ugm-3	112	V ugm-3	124	V ugm-3
+2016/6/12	83	V ugm-3	71	V ugm-3	17	V ugm-3	24	V ugm-3	12	V ugm-3	19	V ugm-3	32	V ugm-3	111	V ugm-3	264	V ugm-3	23	V ugm-3	15	V ugm-3	18	V ugm-3	35	V ugm-3	50	V ugm-3
+2016/6/13	87	V ugm-3	61	V ugm-3	34	V ugm-3	48	V ugm-3	25	V ugm-3	22	V ugm-3	28	V ugm-3	71	V ugm-3	321	V ugm-3	31	V ugm-3	14	V ugm-3	34	V ugm-3	51	V ugm-3	121	V ugm-3
+2016/6/14	107	V ugm-3	87	V ugm-3	23	V ugm-3	28	V ugm-3	16	V ugm-3	22	V ugm-3	34	V ugm-3	129	V ugm-3	448	V ugm-3	25	V ugm-3	11	V ugm-3	20	V ugm-3	31	V ugm-3	59	V ugm-3
+2016/6/15	113	V ugm-3	83	V ugm-3	20	V ugm-3	22	V ugm-3	12	V ugm-3	17	V ugm-3	35	V ugm-3	157	V ugm-3	429	V ugm-3	20	V ugm-3	15	V ugm-3	22	V ugm-3	29	V ugm-3	50	V ugm-3
+2016/6/16	229	V ugm-3	85	V ugm-3	23	V ugm-3	40	V ugm-3	13	V ugm-3	27	V ugm-3	46	V ugm-3	144	V ugm-3	357	V ugm-3	36	V ugm-3	20	V ugm-3	27	V ugm-3	45	V ugm-3	55	V ugm-3
+2016/6/17	239	V ugm-3	75	V ugm-3	33	V ugm-3	70	V ugm-3	22	V ugm-3	20	V ugm-3	43	V ugm-3	50	V ugm-3	140	V ugm-3	31	V ugm-3	26	V ugm-3	35	V ugm-3	210	V ugm-3	135	V ugm-3
+2016/6/18	191	V ugm-3	60	V ugm-3	26	V ugm-3	71	V ugm-3	17	V ugm-3	20	V ugm-3	45	V ugm-3	68	V ugm-3	126	V ugm-3	28	V ugm-3	21	V ugm-3	35	V ugm-3	167	V ugm-3	136	V ugm-3
+2016/6/19	74	V ugm-3	64	V ugm-3	13	V ugm-3	18	V ugm-3	11	V ugm-3	19	V ugm-3	31	V ugm-3	90	V ugm-3	256	V ugm-3	20	V ugm-3	16	V ugm-3	15	V ugm-3	24	V ugm-3	40	V ugm-3
+2016/6/20	90	V ugm-3	64	V ugm-3	21	V ugm-3	36	V ugm-3	13	V ugm-3	19	V ugm-3	29	V ugm-3	105	V ugm-3	390	V ugm-3	24	V ugm-3	10	V ugm-3	25	V ugm-3	31	V ugm-3	70	V ugm-3
+2016/6/21	83	V ugm-3	68	V ugm-3	20	V ugm-3	25	V ugm-3	16	V ugm-3	19	V ugm-3	22	V ugm-3	84	V ugm-3	467	V ugm-3	23	V ugm-3	16	V ugm-3	18	V ugm-3	33	V ugm-3	76	V ugm-3
+2016/6/22	200	V ugm-3	105	V ugm-3	28	V ugm-3	33	V ugm-3	15	V ugm-3	34	V ugm-3	40	V ugm-3	160	V ugm-3	501	V ugm-3	30	V ugm-3	17	V ugm-3		V ugm-3	49	V ugm-3	56	V ugm-3
+2016/6/23	222	V ugm-3	112	V ugm-3	52	V ugm-3	66	V ugm-3	35	V ugm-3	42	V ugm-3	56	V ugm-3	142	V ugm-3	458	V ugm-3		V ugm-3	24	V ugm-3		V ugm-3		V ugm-3	82	V ugm-3
+2016/6/24	102	V ugm-3	77	V ugm-3	21	V ugm-3	25	V ugm-3	16	V ugm-3	20	V ugm-3	30	V ugm-3	110	V ugm-3	497	V ugm-3	25	V ugm-3	11	V ugm-3		V ugm-3		V ugm-3		V ugm-3
+2016/6/25	72	V ugm-3	47	V ugm-3	29	V ugm-3	38	V ugm-3	18	V ugm-3	17	V ugm-3	22	V ugm-3	43	V ugm-3	207	V ugm-3	18	V ugm-3	11	V ugm-3		V ugm-3		V ugm-3	120	V ugm-3
+2016/6/26	41	V ugm-3	35	V ugm-3	15	V ugm-3	34	V ugm-3	13	V ugm-3	11	V ugm-3	19	V ugm-3	47	V ugm-3	184	V ugm-3	16	V ugm-3	13	V ugm-3		V ugm-3		V ugm-3	80	V ugm-3
+2016/6/27	114	V ugm-3	33	V ugm-3	25	V ugm-3	61	V ugm-3	19	V ugm-3	14	V ugm-3	31	V ugm-3	26	V ugm-3	152	V ugm-3	18	V ugm-3	13	V ugm-3		V ugm-3		V ugm-3	127	V ugm-3
+2016/6/28	169	V ugm-3	78	V ugm-3	33	V ugm-3	41	V ugm-3	20	V ugm-3	25	V ugm-3	54	V ugm-3	141	V ugm-3	378	V ugm-3	33	V ugm-3	22	V ugm-3		V ugm-3		V ugm-3	71	V ugm-3
+2016/6/29	103	V ugm-3	69	V ugm-3	17	V ugm-3	23	V ugm-3	10	V ugm-3	16	V ugm-3	36	V ugm-3	118	V ugm-3	422	V ugm-3	20	V ugm-3	11	V ugm-3		V ugm-3		V ugm-3	41	V ugm-3
+2016/6/30	109	V ugm-3	74	V ugm-3	19	V ugm-3	21	V ugm-3	12	V ugm-3	16	V ugm-3	32	V ugm-3	112	V ugm-3	493	V ugm-3	19	V ugm-3	11	V ugm-3		V ugm-3		V ugm-3	56	V ugm-3
+2016/7/1	78	V ugm-3	63	V ugm-3	18	V ugm-3	25	V ugm-3	13	V ugm-3	17	V ugm-3	29	V ugm-3	91	V ugm-3	478	V ugm-3	21	V ugm-3	10	V ugm-3		V ugm-3		V ugm-3	68	V ugm-3
+2016/7/2	38	V ugm-3	41	V ugm-3	10	V ugm-3	23	V ugm-3	10	V ugm-3	12	V ugm-3	16	V ugm-3	63	V ugm-3	325	V ugm-3	15	V ugm-3	9	V ugm-3		V ugm-3		V ugm-3	57	V ugm-3
+2016/7/3	73	V ugm-3	69	V ugm-3	12	V ugm-3	18	V ugm-3	9	V ugm-3	13	V ugm-3	26	V ugm-3	107	V ugm-3	289	V ugm-3	16	V ugm-3	11	V ugm-3		V ugm-3		V ugm-3	37	V ugm-3
+2016/7/4	124	V ugm-3	90	V ugm-3	23	V ugm-3	30	V ugm-3	15	V ugm-3	23	V ugm-3	38	V ugm-3	144	V ugm-3	402	V ugm-3	23	V ugm-3	16	V ugm-3		V ugm-3		V ugm-3	53	V ugm-3
+2016/7/5	105	V ugm-3	37	V ugm-3	20	V ugm-3	65	V ugm-3	14	V ugm-3	14	V ugm-3	31	V ugm-3	34	V ugm-3	160	V ugm-3	18	V ugm-3	13	V ugm-3		V ugm-3		V ugm-3	108	V ugm-3
+2016/7/6	170	V ugm-3	60	V ugm-3	27	V ugm-3	63	V ugm-3	22	V ugm-3	18	V ugm-3	41	V ugm-3	62	V ugm-3	176	V ugm-3	26	V ugm-3	23	V ugm-3		V ugm-3		V ugm-3	146	V ugm-3
+2016/7/7	122	V ugm-3	92	V ugm-3	27	V ugm-3	29	V ugm-3	17	V ugm-3	25	V ugm-3	32	V ugm-3	130	V ugm-3	482	V ugm-3	24	V ugm-3	19	V ugm-3		V ugm-3		V ugm-3	67	V ugm-3
+2016/7/8	56	V ugm-3	51	V ugm-3	18	V ugm-3	28	V ugm-3	15	V ugm-3	17	V ugm-3	25	V ugm-3	81	V ugm-3	370	V ugm-3	21	V ugm-3	13	V ugm-3		V ugm-3		V ugm-3	82	V ugm-3
+2016/7/9	85	V ugm-3	65	V ugm-3	15	V ugm-3	20	V ugm-3	10	V ugm-3	15	V ugm-3	30	V ugm-3	93	V ugm-3	277	V ugm-3	17	V ugm-3	14	V ugm-3	25	V ugm-3		V ugm-3	38	V ugm-3
+2016/7/10	53	V ugm-3	47	V ugm-3	9	V ugm-3	14	V ugm-3	5	V ugm-3	9	V ugm-3	28	V ugm-3	71	V ugm-3	229	V ugm-3	11	V ugm-3	13	V ugm-3	14	V ugm-3		V ugm-3	24	V ugm-3
+2016/7/11	74	V ugm-3	66	V ugm-3	14	V ugm-3	21	V ugm-3	12	V ugm-3	16	V ugm-3	34	V ugm-3	103	V ugm-3	342	V ugm-3	19	V ugm-3	11	V ugm-3	27	V ugm-3		V ugm-3	49	V ugm-3
+2016/7/12	137	V ugm-3	68	V ugm-3	25	V ugm-3	57	V ugm-3	19	V ugm-3	24	V ugm-3	34	V ugm-3	87	V ugm-3	316	V ugm-3	27	V ugm-3	13	V ugm-3	60	V ugm-3		V ugm-3	112	V ugm-3
+2016/7/13	158	V ugm-3	47	V ugm-3	33	V ugm-3	82	V ugm-3	27	V ugm-3	20	V ugm-3	46	V ugm-3	28	V ugm-3	133	V ugm-3	26	V ugm-3	20	V ugm-3	74	V ugm-3		V ugm-3	164	V ugm-3
+2016/7/14	187	V ugm-3	52	V ugm-3	29	V ugm-3	79	V ugm-3	24	V ugm-3	23	V ugm-3	55	V ugm-3	33	V ugm-3	147	V ugm-3	31	V ugm-3	18	V ugm-3	80	V ugm-3		V ugm-3	157	V ugm-3
+2016/7/15	80	V ugm-3	68	V ugm-3	29	V ugm-3	43	V ugm-3	21	V ugm-3	28	V ugm-3	40	V ugm-3	87	V ugm-3	436	V ugm-3	37	V ugm-3	14	V ugm-3	50	V ugm-3		V ugm-3	117	V ugm-3
+2016/7/16	37	V ugm-3	40	V ugm-3	12	V ugm-3	20	V ugm-3	11	V ugm-3	10	V ugm-3	13	V ugm-3	52	V ugm-3	283	V ugm-3	14	V ugm-3	12	V ugm-3	34	V ugm-3		V ugm-3	68	V ugm-3
+2016/7/17	29	V ugm-3	30	V ugm-3	15	V ugm-3	22	V ugm-3	12	V ugm-3	10	V ugm-3	18	V ugm-3	38	V ugm-3	205	V ugm-3	12	V ugm-3	8	V ugm-3	23	V ugm-3		V ugm-3	67	V ugm-3
+2016/7/18	204	V ugm-3	89	V ugm-3	35	V ugm-3	58	V ugm-3	25	V ugm-3	32	V ugm-3	74	V ugm-3	113	V ugm-3	317	V ugm-3	42	V ugm-3	31	V ugm-3	55	V ugm-3		V ugm-3	103	V ugm-3
+2016/7/19	202	V ugm-3	83	V ugm-3	52	V ugm-3	81	V ugm-3	37	V ugm-3	40	V ugm-3	69	V ugm-3	165	V ugm-3	329	V ugm-3	57	V ugm-3	34	V ugm-3	84	V ugm-3		V ugm-3	97	V ugm-3
+2016/7/20	82	V ugm-3	62	V ugm-3	30	V ugm-3	46	V ugm-3	19	V ugm-3	21	V ugm-3	37	V ugm-3	105	V ugm-3	327	V ugm-3	27	V ugm-3	22	V ugm-3	35	V ugm-3		V ugm-3	91	V ugm-3
+2016/7/21	183	V ugm-3	47	V ugm-3	33	V ugm-3	64	V ugm-3	29	V ugm-3	17	V ugm-3	36	V ugm-3	33	V ugm-3	186	V ugm-3	25	V ugm-3	24	V ugm-3	52	V ugm-3		V ugm-3	153	V ugm-3
+2016/7/22	242	V ugm-3	85	V ugm-3	40	V ugm-3	83	V ugm-3	36	V ugm-3	37	V ugm-3	65	V ugm-3	133	V ugm-3	233	V ugm-3	64	V ugm-3	33	V ugm-3	53	V ugm-3		V ugm-3	152	V ugm-3
+2016/7/23	149	V ugm-3	88	V ugm-3	36	V ugm-3	68	V ugm-3	29	V ugm-3	39	V ugm-3	56	V ugm-3	122	V ugm-3	307	V ugm-3	46	V ugm-3	21	V ugm-3	45	V ugm-3		V ugm-3	87	V ugm-3
+2016/7/24	58	V ugm-3	54	V ugm-3	12	V ugm-3	20	V ugm-3	11	V ugm-3	16	V ugm-3	21	V ugm-3	92	V ugm-3	241	V ugm-3	18	V ugm-3	16	V ugm-3	18	V ugm-3		V ugm-3	41	V ugm-3
+2016/7/25	52	V ugm-3	39	V ugm-3	17	V ugm-3	33	V ugm-3	14	V ugm-3	12	V ugm-3	16	V ugm-3	54	V ugm-3	287	V ugm-3	17	V ugm-3	10	V ugm-3	30	V ugm-3		V ugm-3	104	V ugm-3
+2016/7/26	93	V ugm-3	66	V ugm-3	23	V ugm-3	36	V ugm-3	19	V ugm-3	22	V ugm-3	28	V ugm-3	90	V ugm-3	401	V ugm-3	24	V ugm-3	16	V ugm-3	32	V ugm-3		V ugm-3	89	V ugm-3
+2016/7/27	120	V ugm-3	67	V ugm-3	19	V ugm-3	48	V ugm-3	15	V ugm-3	20	V ugm-3	30	V ugm-3	98	V ugm-3	292	V ugm-3	24	V ugm-3		V ugm-3	23	V ugm-3		V ugm-3		V ugm-3
+2016/7/28	148	V ugm-3	75	V ugm-3	26	V ugm-3	49	V ugm-3	21	V ugm-3	21	V ugm-3	44	V ugm-3	104	V ugm-3	338	V ugm-3	26	V ugm-3		V ugm-3	34	V ugm-3		V ugm-3	90	V ugm-3
+2016/7/29	86	V ugm-3	61	V ugm-3	20	V ugm-3	32	V ugm-3	18	V ugm-3	20	V ugm-3	25	V ugm-3	90	V ugm-3	419	V ugm-3	23	V ugm-3		V ugm-3	23	V ugm-3		V ugm-3	81	V ugm-3
+2016/7/30	144	V ugm-3	35	V ugm-3	29	V ugm-3	68	V ugm-3	24	V ugm-3	18	V ugm-3	33	V ugm-3	21	V ugm-3	111	V ugm-3	23	V ugm-3		V ugm-3	33	V ugm-3		V ugm-3	125	V ugm-3
+2016/7/31	81	V ugm-3	26	V ugm-3	20	V ugm-3	64	V ugm-3	15	V ugm-3	12	V ugm-3	25	V ugm-3	22	V ugm-3	92	V ugm-3	14	V ugm-3		V ugm-3	19	V ugm-3		V ugm-3	104	V ugm-3
+2016/8/1	131	V ugm-3	76	V ugm-3	29	V ugm-3	38	V ugm-3	19	V ugm-3	27	V ugm-3	38	V ugm-3	123	V ugm-3	368	V ugm-3	32	V ugm-3		V ugm-3	27	V ugm-3		V ugm-3	76	V ugm-3
+2016/8/2	98	V ugm-3	79	V ugm-3	17	V ugm-3	28	V ugm-3	13	V ugm-3	22	V ugm-3	34	V ugm-3	124	V ugm-3	380	V ugm-3	36	V ugm-3		V ugm-3	18	V ugm-3		V ugm-3	46	V ugm-3
+2016/8/3	60	V ugm-3	49	V ugm-3	12	V ugm-3	19	V ugm-3	8	V ugm-3	11	V ugm-3	22	V ugm-3	79	V ugm-3	340	V ugm-3	18	V ugm-3		V ugm-3		V ugm-3		V ugm-3	39	V ugm-3
+2016/8/4	40	V ugm-3	39	V ugm-3	16	V ugm-3	28	V ugm-3	12	V ugm-3	12	V ugm-3	18	V ugm-3	60	V ugm-3	313	V ugm-3	15	V ugm-3		V ugm-3		V ugm-3		V ugm-3	81	V ugm-3
+2016/8/5	73	V ugm-3	51	V ugm-3	31	V ugm-3	44	V ugm-3	21	V ugm-3	17	V ugm-3	21	V ugm-3	69	V ugm-3	246	V ugm-3	24	V ugm-3		V ugm-3	28	V ugm-3		V ugm-3	117	V ugm-3
+2016/8/6	83	V ugm-3	56	V ugm-3	20	V ugm-3	30	V ugm-3	16	V ugm-3	15	V ugm-3	26	V ugm-3	64	V ugm-3	223	V ugm-3	21	V ugm-3		V ugm-3	21	V ugm-3		V ugm-3	67	V ugm-3
+2016/8/7	26	V ugm-3	34	V ugm-3	7	V ugm-3	13	V ugm-3	6	V ugm-3	9	V ugm-3	12	V ugm-3	49	V ugm-3	189	V ugm-3	10	V ugm-3		V ugm-3	10	V ugm-3		V ugm-3	34	V ugm-3
+2016/8/8	77	V ugm-3	25	V ugm-3	16	V ugm-3	47	V ugm-3	11	V ugm-3	11	V ugm-3	23	V ugm-3	18	V ugm-3	108	V ugm-3	15	V ugm-3		V ugm-3	31	V ugm-3		V ugm-3	109	V ugm-3
+2016/8/9	144	V ugm-3	34	V ugm-3	19	V ugm-3	61	V ugm-3	14	V ugm-3	14	V ugm-3	32	V ugm-3	18	V ugm-3	79	V ugm-3	19	V ugm-3		V ugm-3	34	V ugm-3		V ugm-3	120	V ugm-3
+2016/8/10	121	V ugm-3	45	V ugm-3	28	V ugm-3	57	V ugm-3	21	V ugm-3	20	V ugm-3	30	V ugm-3	43	V ugm-3	149	V ugm-3	27	V ugm-3		V ugm-3	35	V ugm-3		V ugm-3	125	V ugm-3
+2016/8/11	39	V ugm-3	32	V ugm-3	28	V ugm-3	50	V ugm-3	19	V ugm-3	14	V ugm-3	20	V ugm-3	36	V ugm-3	212	V ugm-3	19	V ugm-3		V ugm-3	33	V ugm-3		V ugm-3	104	V ugm-3
+2016/8/12	56	V ugm-3	55	V ugm-3	21	V ugm-3	34	V ugm-3	15	V ugm-3	18	V ugm-3	19	V ugm-3	65	V ugm-3	351	V ugm-3	24	V ugm-3		V ugm-3	26	V ugm-3		V ugm-3	83	V ugm-3
+2016/8/13	60	V ugm-3	45	V ugm-3	11	V ugm-3	31	V ugm-3	11	V ugm-3	13	V ugm-3	16	V ugm-3	55	V ugm-3	229	V ugm-3	17	V ugm-3		V ugm-3	21	V ugm-3		V ugm-3	72	V ugm-3
+2016/8/14	116	V ugm-3	48	V ugm-3	16	V ugm-3	53	V ugm-3	10	V ugm-3	18	V ugm-3	24	V ugm-3	22	V ugm-3	68	V ugm-3	17	V ugm-3		V ugm-3	21	V ugm-3		V ugm-3	80	V ugm-3
+2016/8/15	158	V ugm-3	61	V ugm-3	38	V ugm-3	39	V ugm-3	18	V ugm-3	27	V ugm-3	49	V ugm-3	83	V ugm-3	210	V ugm-3	37	V ugm-3		V ugm-3	44	V ugm-3		V ugm-3	89	V ugm-3
+2016/8/16	149	V ugm-3	62	V ugm-3	27	V ugm-3	45	V ugm-3	22	V ugm-3	24	V ugm-3	44	V ugm-3	61	V ugm-3	187	V ugm-3	36	V ugm-3		V ugm-3	46	V ugm-3		V ugm-3	95	V ugm-3
+2016/8/17	150	V ugm-3	68	V ugm-3	34	V ugm-3	38	V ugm-3	24	V ugm-3	23	V ugm-3	44	V ugm-3	79	V ugm-3	224	V ugm-3	42	V ugm-3		V ugm-3	52	V ugm-3		V ugm-3	102	V ugm-3
+2016/8/18	180	V ugm-3	70	V ugm-3	29	V ugm-3	59	V ugm-3	25	V ugm-3	25	V ugm-3	40	V ugm-3	66	V ugm-3	190	V ugm-3	42	V ugm-3		V ugm-3	51	V ugm-3		V ugm-3	98	V ugm-3
+2016/8/19	132	V ugm-3	91	V ugm-3	28	V ugm-3	34	V ugm-3	16	V ugm-3	30	V ugm-3	33	V ugm-3	162	V ugm-3	321	V ugm-3	27	V ugm-3		V ugm-3	31	V ugm-3		V ugm-3	45	V ugm-3
+2016/8/20	62	V ugm-3	50	V ugm-3	8	V ugm-3	15	V ugm-3	4	V ugm-3	10	V ugm-3	24	V ugm-3	69	V ugm-3	205	V ugm-3	12	V ugm-3		V ugm-3	12	V ugm-3		V ugm-3	30	V ugm-3
+2016/8/21	28	V ugm-3	33	V ugm-3	5	V ugm-3	13	V ugm-3	5	V ugm-3	8	V ugm-3	14	V ugm-3	56	V ugm-3	191	V ugm-3	10	V ugm-3		V ugm-3	14	V ugm-3		V ugm-3	43	V ugm-3
+2016/8/22	90	V ugm-3	73	V ugm-3	15	V ugm-3	20	V ugm-3	11	V ugm-3	16	V ugm-3	33	V ugm-3	124	V ugm-3	342	V ugm-3	19	V ugm-3		V ugm-3	18	V ugm-3		V ugm-3	45	V ugm-3
+2016/8/23	234	V ugm-3	112	V ugm-3	43	V ugm-3	56	V ugm-3	22	V ugm-3	42	V ugm-3	47	V ugm-3	232	V ugm-3	347	V ugm-3	46	V ugm-3		V ugm-3	55	V ugm-3		V ugm-3	79	V ugm-3
+2016/8/24	259	V ugm-3	103	V ugm-3	75	V ugm-3	115	V ugm-3	29	V ugm-3	54	V ugm-3	94	V ugm-3	75	V ugm-3	234	V ugm-3	73	V ugm-3		V ugm-3	103	V ugm-3		V ugm-3	176	V ugm-3
+2016/8/25	241	V ugm-3	65	V ugm-3	42	V ugm-3	77	V ugm-3	40	V ugm-3	34	V ugm-3	65	V ugm-3	52	V ugm-3	135	V ugm-3	53	V ugm-3		V ugm-3	62	V ugm-3		V ugm-3	131	V ugm-3
+2016/8/26	134	V ugm-3	52	V ugm-3	38	V ugm-3	72	V ugm-3	30	V ugm-3	23	V ugm-3	47	V ugm-3	40	V ugm-3	208	V ugm-3	32	V ugm-3		V ugm-3		V ugm-3		V ugm-3	125	V ugm-3
+2016/8/27	106	V ugm-3	58	V ugm-3	27	V ugm-3	44	V ugm-3	24	V ugm-3	25	V ugm-3	44	V ugm-3	75	V ugm-3	148	V ugm-3	38	V ugm-3		V ugm-3		V ugm-3		V ugm-3	73	V ugm-3
+2016/8/28	52	V ugm-3	49	V ugm-3	11	V ugm-3	17	V ugm-3	11	V ugm-3	13	V ugm-3	30	V ugm-3	87	V ugm-3	224	V ugm-3	22	V ugm-3		V ugm-3		V ugm-3		V ugm-3	33	V ugm-3
+2016/8/29	139	V ugm-3	54	V ugm-3	24	V ugm-3	88	V ugm-3	19	V ugm-3	15	V ugm-3	60	V ugm-3	43	V ugm-3	118	V ugm-3	82	V ugm-3		V ugm-3		V ugm-3		V ugm-3	126	V ugm-3
+2016/8/30	220	V ugm-3	146	V ugm-3	44	V ugm-3	61	V ugm-3	28	V ugm-3	60	V ugm-3	94	V ugm-3	190	V ugm-3	437	V ugm-3	75	V ugm-3		V ugm-3		V ugm-3		V ugm-3	99	V ugm-3
+2016/8/31	87	V ugm-3	78	V ugm-3	39	V ugm-3	36	V ugm-3	26	V ugm-3	27	V ugm-3	39	V ugm-3	144	V ugm-3	408	V ugm-3	33	V ugm-3		V ugm-3		V ugm-3		V ugm-3	97	V ugm-3
+2016/9/1	129	V ugm-3	84	V ugm-3		V ugm-3	43	V ugm-3	23	V ugm-3	34	V ugm-3	44	V ugm-3	105	V ugm-3	411	V ugm-3	37	V ugm-3		V ugm-3		V ugm-3	48	V ugm-3	96	V ugm-3
+2016/9/2	142	V ugm-3	83	V ugm-3		V ugm-3	25	V ugm-3	15	V ugm-3	24	V ugm-3	35	V ugm-3	137	V ugm-3	411	V ugm-3	25	V ugm-3		V ugm-3		V ugm-3	27	V ugm-3	59	V ugm-3
+2016/9/3	116	V ugm-3	77	V ugm-3	14	V ugm-3	25	V ugm-3	11	V ugm-3	20	V ugm-3	36	V ugm-3	115	V ugm-3	268	V ugm-3	22	V ugm-3		V ugm-3		V ugm-3	24	V ugm-3	46	V ugm-3
+2016/9/4	31	V ugm-3	32	V ugm-3	11	V ugm-3	20	V ugm-3	11	V ugm-3	11	V ugm-3	14	V ugm-3	49	V ugm-3	164	V ugm-3	13	V ugm-3		V ugm-3		V ugm-3	21	V ugm-3	75	V ugm-3
+2016/9/5	205	V ugm-3	113	V ugm-3		V ugm-3		V ugm-3	24	V ugm-3	41	V ugm-3	44	V ugm-3	201	V ugm-3	404	V ugm-3	39	V ugm-3		V ugm-3		V ugm-3	46	V ugm-3	64	V ugm-3
+2016/9/6	172	V ugm-3	98	V ugm-3	22	V ugm-3		V ugm-3	21	V ugm-3	31	V ugm-3	36	V ugm-3	154	V ugm-3	460	V ugm-3	30	V ugm-3		V ugm-3		V ugm-3	42	V ugm-3	59	V ugm-3
+2016/9/7	296	V ugm-3	108	V ugm-3		V ugm-3	47	V ugm-3	27	V ugm-3	44	V ugm-3	56	V ugm-3		V ugm-3	326	V ugm-3	46	V ugm-3		V ugm-3		V ugm-3	94	V ugm-3	73	V ugm-3
+2016/9/8	116	V ugm-3	75	V ugm-3	33	V ugm-3	51	V ugm-3	21	V ugm-3	28	V ugm-3	40	V ugm-3		V ugm-3	386	V ugm-3	33	V ugm-3		V ugm-3		V ugm-3	90	V ugm-3	100	V ugm-3
+2016/9/9	132	V ugm-3	86	V ugm-3	16	V ugm-3	21	V ugm-3	10	V ugm-3	17	V ugm-3	32	V ugm-3		V ugm-3	378	V ugm-3	20	V ugm-3		V ugm-3		V ugm-3	21	V ugm-3	58	V ugm-3
+2016/9/10	93	V ugm-3	69	V ugm-3	14	V ugm-3	27	V ugm-3	11	V ugm-3	21	V ugm-3	28	V ugm-3	104	V ugm-3	268	V ugm-3	23	V ugm-3		V ugm-3		V ugm-3	24	V ugm-3	51	V ugm-3
+2016/9/11	115	V ugm-3	85	V ugm-3	25	V ugm-3	38	V ugm-3	14	V ugm-3	26	V ugm-3	61	V ugm-3	136	V ugm-3	293	V ugm-3	31	V ugm-3		V ugm-3		V ugm-3	42	V ugm-3	85	V ugm-3
+2016/9/12	195	V ugm-3	144	V ugm-3	51	V ugm-3	44	V ugm-3	22	V ugm-3	49	V ugm-3	56	V ugm-3	233	V ugm-3	366	V ugm-3	42	V ugm-3		V ugm-3		V ugm-3	70	V ugm-3	75	V ugm-3
+2016/9/13	238	V ugm-3	111	V ugm-3	56	V ugm-3	97	V ugm-3	49	V ugm-3	56	V ugm-3	124	V ugm-3	175	V ugm-3	306	V ugm-3	90	V ugm-3		V ugm-3		V ugm-3	200	V ugm-3	155	V ugm-3
+2016/9/14	191	V ugm-3	104	V ugm-3	48	V ugm-3	64	V ugm-3	43	V ugm-3	44	V ugm-3	84	V ugm-3	142	V ugm-3		V ugm-3	55	V ugm-3		V ugm-3		V ugm-3	115	V ugm-3	143	V ugm-3
+2016/9/15	217	V ugm-3	93	V ugm-3	42	V ugm-3	78	V ugm-3	41	V ugm-3	34	V ugm-3	68	V ugm-3	96	V ugm-3		V ugm-3	42	V ugm-3		V ugm-3		V ugm-3	149	V ugm-3	120	V ugm-3
+2016/9/16	211	V ugm-3	43	V ugm-3	25	V ugm-3	78	V ugm-3	23	V ugm-3	21	V ugm-3	39	V ugm-3	34	V ugm-3	103	V ugm-3	29	V ugm-3		V ugm-3		V ugm-3	165	V ugm-3	137	V ugm-3
+2016/9/17	205	V ugm-3	38	V ugm-3	14	V ugm-3	71	V ugm-3	12	V ugm-3	11	V ugm-3	22	V ugm-3	16	V ugm-3	65	V ugm-3	19	V ugm-3		V ugm-3		V ugm-3	135	V ugm-3	98	V ugm-3
+2016/9/18	172	V ugm-3	46	V ugm-3	23	V ugm-3	59	V ugm-3	25	V ugm-3	23	V ugm-3	32	V ugm-3	18	V ugm-3	87	V ugm-3	23	V ugm-3		V ugm-3		V ugm-3	149	V ugm-3	133	V ugm-3
+2016/9/19	270	V ugm-3	60	V ugm-3	44	V ugm-3	72	V ugm-3	56	V ugm-3	37	V ugm-3	96	V ugm-3	90	V ugm-3	158	V ugm-3	68	V ugm-3		V ugm-3		V ugm-3	150	V ugm-3	204	V ugm-3
+2016/9/20	375	V ugm-3	91	V ugm-3	26	V ugm-3	51	V ugm-3	29	V ugm-3	28	V ugm-3	73	V ugm-3	51	V ugm-3	132	V ugm-3	46	V ugm-3		V ugm-3		V ugm-3	256	V ugm-3	198	V ugm-3
+2016/9/21	252	V ugm-3	129	V ugm-3	56	V ugm-3	55	V ugm-3	46	V ugm-3	49	V ugm-3	95	V ugm-3	191	V ugm-3	401	V ugm-3	54	V ugm-3		V ugm-3		V ugm-3	92	V ugm-3	120	V ugm-3
+2016/9/22	159	V ugm-3	107	V ugm-3	37	V ugm-3	33	V ugm-3	27	V ugm-3	32	V ugm-3	47	V ugm-3	164	V ugm-3	512	V ugm-3	41	V ugm-3				V ugm-3	47	V ugm-3	91	V ugm-3
+2016/9/23	206	V ugm-3	130	V ugm-3	37	V ugm-3	44	V ugm-3	31	V ugm-3	38	V ugm-3	72	V ugm-3	192	V ugm-3	528	V ugm-3	52	V ugm-3				V ugm-3	69	V ugm-3	115	V ugm-3
+2016/9/24	114	V ugm-3	101	V ugm-3	17	V ugm-3	36	V ugm-3	11	V ugm-3	29	V ugm-3	63	V ugm-3	173	V ugm-3	300	V ugm-3	28	V ugm-3				V ugm-3	22	V ugm-3	36	V ugm-3
+2016/9/25	58	V ugm-3	57	V ugm-3	12	V ugm-3	18	V ugm-3	12	V ugm-3	17	V ugm-3	37	V ugm-3	95	V ugm-3	286	V ugm-3	18	V ugm-3				V ugm-3	19	V ugm-3	47	V ugm-3
+2016/9/26	208	V ugm-3	149	V ugm-3	44	V ugm-3	44	V ugm-3	23	V ugm-3	46	V ugm-3	68	V ugm-3	261	V ugm-3	433	V ugm-3	46	V ugm-3				V ugm-3	83	V ugm-3	75	V ugm-3
+2016/9/27	143	V ugm-3	122	V ugm-3	31	V ugm-3	39	V ugm-3	17	V ugm-3	41	V ugm-3	50	V ugm-3	161	V ugm-3	408	V ugm-3	34	V ugm-3				V ugm-3	52	V ugm-3	62	V ugm-3
+2016/9/28	94	V ugm-3	79	V ugm-3	15	V ugm-3	32	V ugm-3	16	V ugm-3	23	V ugm-3	29	V ugm-3	115	V ugm-3	441	V ugm-3	27	V ugm-3				V ugm-3	25	V ugm-3	71	V ugm-3
+2016/9/29	56	V ugm-3	54	V ugm-3	13	V ugm-3	34	V ugm-3	14	V ugm-3	16	V ugm-3	18	V ugm-3	90	V ugm-3	438	V ugm-3	22	V ugm-3				V ugm-3	22	V ugm-3	78	V ugm-3
+2016/9/30	143	V ugm-3	105	V ugm-3	29	V ugm-3	36	V ugm-3	21	V ugm-3	32	V ugm-3	55	V ugm-3	182	V ugm-3	518	V ugm-3		V ugm-3				V ugm-3		V ugm-3		V ugm-3
+2016/10/1	183	V ugm-3	113	V ugm-3	33	V ugm-3	45	V ugm-3	27	V ugm-3	50	V ugm-3	74	V ugm-3	190	V ugm-3	297	V ugm-3	46	V ugm-3				V ugm-3	88	V ugm-3	104	V ugm-3
+2016/10/2	172	V ugm-3	56	V ugm-3	28	V ugm-3	52	V ugm-3	26	V ugm-3	26	V ugm-3	70	V ugm-3	43	V ugm-3	112	V ugm-3	56	V ugm-3				V ugm-3	184	V ugm-3	152	V ugm-3
+2016/10/3	315	V ugm-3	168	V ugm-3	97	V ugm-3	113	V ugm-3	87	V ugm-3	71	V ugm-3	185	V ugm-3	191	V ugm-3	319	V ugm-3	194	V ugm-3				V ugm-3	265	V ugm-3	284	V ugm-3
+2016/10/4	177	V ugm-3	87	V ugm-3	60	V ugm-3	57	V ugm-3	39	V ugm-3	44	V ugm-3	76	V ugm-3	87	V ugm-3	269	V ugm-3	64	V ugm-3				V ugm-3	187	V ugm-3	138	V ugm-3
+2016/10/5	140	V ugm-3	83	V ugm-3	17	V ugm-3	40	V ugm-3	21	V ugm-3	39	V ugm-3	36	V ugm-3	61	V ugm-3	264	V ugm-3	48	V ugm-3				V ugm-3	126	V ugm-3	89	V ugm-3
+2016/10/6	155	V ugm-3	78	V ugm-3		V ugm-3	46	V ugm-3	17	V ugm-3	27	V ugm-3	48	V ugm-3	45	V ugm-3	193	V ugm-3	40	V ugm-3				V ugm-3	159	V ugm-3	139	V ugm-3
+2016/10/7	228	V ugm-3	102	V ugm-3	32	V ugm-3	64	V ugm-3	35	V ugm-3	43	V ugm-3	74	V ugm-3	68	V ugm-3	171	V ugm-3	60	V ugm-3				V ugm-3	236	V ugm-3	197	V ugm-3
+2016/10/8	223	V ugm-3	65	V ugm-3	18	V ugm-3	53	V ugm-3	17	V ugm-3	16	V ugm-3	31	V ugm-3	22	V ugm-3	90	V ugm-3	26	V ugm-3				V ugm-3	174	V ugm-3	136	V ugm-3
+2016/10/9	157	V ugm-3	54	V ugm-3	16	V ugm-3	42	V ugm-3	14	V ugm-3	14	V ugm-3	29	V ugm-3	21	V ugm-3	92	V ugm-3	31	V ugm-3				V ugm-3	150	V ugm-3	132	V ugm-3
+2016/10/10	317	V ugm-3	81	V ugm-3	31	V ugm-3	73	V ugm-3	27	V ugm-3	25	V ugm-3	60	V ugm-3	40	V ugm-3	122	V ugm-3	50	V ugm-3				V ugm-3	244	V ugm-3	196	V ugm-3
+2016/10/11	264	V ugm-3	118	V ugm-3	65	V ugm-3	74	V ugm-3	64	V ugm-3	50	V ugm-3	127	V ugm-3	107	V ugm-3	181	V ugm-3	78	V ugm-3				V ugm-3	278	V ugm-3	228	V ugm-3
+2016/10/12	173	V ugm-3	80	V ugm-3	30	V ugm-3	61	V ugm-3	25	V ugm-3	30	V ugm-3	55	V ugm-3	51	V ugm-3	121	V ugm-3	42	V ugm-3				V ugm-3	212	V ugm-3	175	V ugm-3
+2016/10/13	199	V ugm-3	100	V ugm-3	28	V ugm-3	71	V ugm-3	31	V ugm-3	43	V ugm-3	65	V ugm-3	60	V ugm-3	185	V ugm-3	56	V ugm-3				V ugm-3	192	V ugm-3	175	V ugm-3
+2016/10/14	244	V ugm-3	113	V ugm-3	47	V ugm-3	78	V ugm-3	49	V ugm-3	48	V ugm-3		V ugm-3	94	V ugm-3	223	V ugm-3	79	V ugm-3				V ugm-3	274	V ugm-3	212	V ugm-3
+2016/10/15	176	V ugm-3	133	V ugm-3	36	V ugm-3	54	V ugm-3	23	V ugm-3	45	V ugm-3		V ugm-3	213	V ugm-3	306	V ugm-3	55	V ugm-3				V ugm-3	88	V ugm-3	98	V ugm-3
+2016/10/16	96	V ugm-3	113	V ugm-3	20	V ugm-3	37	V ugm-3	10	V ugm-3	36	V ugm-3		V ugm-3	153	V ugm-3	251	V ugm-3	35	V ugm-3				V ugm-3	60	V ugm-3	51	V ugm-3
+2016/10/17	176	V ugm-3	128	V ugm-3	32	V ugm-3	45	V ugm-3	19	V ugm-3	38	V ugm-3		V ugm-3	200	V ugm-3	498	V ugm-3	43	V ugm-3				V ugm-3	42	V ugm-3	79	V ugm-3
+2016/10/18	63	V ugm-3	54	V ugm-3	21	V ugm-3	51	V ugm-3	21	V ugm-3	19	V ugm-3	23	V ugm-3	75	V ugm-3	311	V ugm-3	28	V ugm-3				V ugm-3	60	V ugm-3	106	V ugm-3
+2016/10/19	202	V ugm-3	40	V ugm-3	25	V ugm-3	85	V ugm-3	26	V ugm-3	21	V ugm-3	46	V ugm-3	29	V ugm-3	132	V ugm-3	42	V ugm-3				V ugm-3	168	V ugm-3	162	V ugm-3
+2016/10/20	291	V ugm-3	60	V ugm-3	24	V ugm-3	81	V ugm-3	20	V ugm-3	15	V ugm-3	48	V ugm-3	33	V ugm-3	110	V ugm-3	45	V ugm-3				V ugm-3	222	V ugm-3	154	V ugm-3
+2016/10/21	341	V ugm-3	64	V ugm-3	31	V ugm-3	79	V ugm-3	24	V ugm-3	20	V ugm-3	39	V ugm-3	33	V ugm-3	116	V ugm-3	45	V ugm-3				V ugm-3	261	V ugm-3	179	V ugm-3
+2016/10/22	226	V ugm-3	75	V ugm-3	25	V ugm-3	59	V ugm-3	22	V ugm-3	23	V ugm-3	67	V ugm-3	76	V ugm-3	89	V ugm-3	43	V ugm-3				V ugm-3	207	V ugm-3	159	V ugm-3
+2016/10/23	95	V ugm-3	71	V ugm-3	40	V ugm-3	45	V ugm-3	27	V ugm-3	28	V ugm-3	40	V ugm-3	44	V ugm-3	118	V ugm-3	38	V ugm-3				V ugm-3	131	V ugm-3	133	V ugm-3
+2016/10/24	218	V ugm-3	98	V ugm-3	34	V ugm-3	64	V ugm-3	37	V ugm-3	45	V ugm-3	75	V ugm-3	74	V ugm-3	134	V ugm-3	66	V ugm-3				V ugm-3	228	V ugm-3	209	V ugm-3
+2016/10/25	365	V ugm-3	196	V ugm-3	97	V ugm-3	134	V ugm-3	79	V ugm-3	112	V ugm-3	219	V ugm-3	187	V ugm-3	268	V ugm-3	142	V ugm-3				V ugm-3	388	V ugm-3	330	V ugm-3
+2016/10/26	162	V ugm-3	149	V ugm-3	59	V ugm-3	51	V ugm-3	43	V ugm-3	61	V ugm-3	82	V ugm-3	216	V ugm-3	565	V ugm-3	67	V ugm-3				V ugm-3	96	V ugm-3	127	V ugm-3
+2016/10/27	115	V ugm-3	102	V ugm-3	23	V ugm-3	43	V ugm-3	26	V ugm-3	39	V ugm-3	48	V ugm-3	142	V ugm-3	582	V ugm-3	45	V ugm-3				V ugm-3	39	V ugm-3	103	V ugm-3
+2016/10/28	156	V ugm-3	80	V ugm-3	44	V ugm-3	63	V ugm-3	44	V ugm-3	46	V ugm-3	68	V ugm-3	115	V ugm-3	353	V ugm-3	61	V ugm-3				V ugm-3	86	V ugm-3	182	V ugm-3
+2016/10/29	377	V ugm-3	230	V ugm-3	91	V ugm-3	119	V ugm-3	71	V ugm-3	111	V ugm-3	144	V ugm-3	184	V ugm-3	390	V ugm-3	179	V ugm-3				V ugm-3	170	V ugm-3	266	V ugm-3
+2016/10/30	281	V ugm-3	166	V ugm-3	66	V ugm-3	177	V ugm-3	67	V ugm-3	131	V ugm-3	145	V ugm-3	153	V ugm-3	268	V ugm-3	206	V ugm-3				V ugm-3	258	V ugm-3	248	V ugm-3
+2016/10/31	369	V ugm-3	231	V ugm-3	135	V ugm-3	230	V ugm-3	121	V ugm-3	145	V ugm-3	331	V ugm-3	283	V ugm-3	374	V ugm-3	275	V ugm-3				V ugm-3	391	V ugm-3	312	V ugm-3
+2016/11/1	508	V ugm-3	167	V ugm-3	91	V ugm-3		V ugm-3	111	V ugm-3		V ugm-3	186	V ugm-3	169	V ugm-3	354	V ugm-3	257	V ugm-3				V ugm-3	306	V ugm-3	314	V ugm-3
+2016/11/2	387	V ugm-3	134	V ugm-3	79	V ugm-3	126	V ugm-3	87	V ugm-3		V ugm-3	181	V ugm-3	146	V ugm-3	258	V ugm-3	158	V ugm-3				V ugm-3	276	V ugm-3	216	V ugm-3
+2016/11/3	353	V ugm-3	243	V ugm-3	103	V ugm-3	143	V ugm-3	82	V ugm-3		V ugm-3	178	V ugm-3	308	V ugm-3	729	V ugm-3	177	V ugm-3				V ugm-3	138	V ugm-3		V ugm-3
+2016/11/4	289	V ugm-3	134	V ugm-3	63	V ugm-3	88	V ugm-3	59	V ugm-3		V ugm-3	104	V ugm-3	192	V ugm-3	507	V ugm-3	93	V ugm-3				V ugm-3	138	V ugm-3		V ugm-3
+2016/11/5	208	V ugm-3	66	V ugm-3	32	V ugm-3	78	V ugm-3	31	V ugm-3	33	V ugm-3	42	V ugm-3	53	V ugm-3	183	V ugm-3	56	V ugm-3				V ugm-3	157	V ugm-3	143	V ugm-3
+2016/11/6	159	V ugm-3	35	V ugm-3	18	V ugm-3	54	V ugm-3	17	V ugm-3	17	V ugm-3	26	V ugm-3	20	V ugm-3	66	V ugm-3	27	V ugm-3				V ugm-3	136	V ugm-3	120	V ugm-3
+2016/11/7	333	V ugm-3	58	V ugm-3	28	V ugm-3	79	V ugm-3	24	V ugm-3	25	V ugm-3	67	V ugm-3	49	V ugm-3	125	V ugm-3	58	V ugm-3				V ugm-3	210	V ugm-3	155	V ugm-3
+2016/11/8	244	V ugm-3	134	V ugm-3		V ugm-3	103	V ugm-3	71	V ugm-3	90	V ugm-3	98	V ugm-3	222	V ugm-3	480	V ugm-3	111	V ugm-3				V ugm-3	104	V ugm-3	180	V ugm-3
+2016/11/9	183	V ugm-3	74	V ugm-3		V ugm-3	112	V ugm-3	45	V ugm-3	44	V ugm-3	60	V ugm-3	64	V ugm-3	247	V ugm-3	67	V ugm-3				V ugm-3	192	V ugm-3	186	V ugm-3
+2016/11/10	158	V ugm-3	96	V ugm-3		V ugm-3	105	V ugm-3	48	V ugm-3	49	V ugm-3	74	V ugm-3	155	V ugm-3	479	V ugm-3	79	V ugm-3				V ugm-3	116	V ugm-3	170	V ugm-3
+2016/11/11	337	V ugm-3	180	V ugm-3	90	V ugm-3	114	V ugm-3	72	V ugm-3	106	V ugm-3	141	V ugm-3	266	V ugm-3	443	V ugm-3	115	V ugm-3				V ugm-3	210	V ugm-3	178	V ugm-3
+2016/11/12	271	V ugm-3	115	V ugm-3	37	V ugm-3	104	V ugm-3	33	V ugm-3	66	V ugm-3	90	V ugm-3	199	V ugm-3	280	V ugm-3	90	V ugm-3				V ugm-3	150	V ugm-3	119	V ugm-3
+2016/11/13	279	V ugm-3	93	V ugm-3	43	V ugm-3	93	V ugm-3	53	V ugm-3	41	V ugm-3	121	V ugm-3	102	V ugm-3	152	V ugm-3	102	V ugm-3				V ugm-3	217	V ugm-3	208	V ugm-3
+2016/11/14	184	V ugm-3	183	V ugm-3	62	V ugm-3	99	V ugm-3	53	V ugm-3	58	V ugm-3	85	V ugm-3	222	V ugm-3	615	V ugm-3	100	V ugm-3				V ugm-3	97	V ugm-3	154	V ugm-3
+2016/11/15	87	V ugm-3	79	V ugm-3	27	V ugm-3	71	V ugm-3	31	V ugm-3	30	V ugm-3	32	V ugm-3	100	V ugm-3	503	V ugm-3	44	V ugm-3				V ugm-3	54	V ugm-3	138	V ugm-3
+2016/11/16	72	V ugm-3	64	V ugm-3	16	V ugm-3	53	V ugm-3	25	V ugm-3	23	V ugm-3		V ugm-3	105	V ugm-3	524	V ugm-3	34	V ugm-3				V ugm-3	30	V ugm-3	99	V ugm-3
+2016/11/17	105	V ugm-3	77	V ugm-3	20	V ugm-3	52	V ugm-3	19	V ugm-3	24	V ugm-3			145	V ugm-3	536	V ugm-3	32	V ugm-3				V ugm-3	27	V ugm-3	69	V ugm-3
+2016/11/18	121	V ugm-3	99	V ugm-3	30	V ugm-3	62	V ugm-3	30	V ugm-3	38	V ugm-3			180	V ugm-3	623	V ugm-3	47	V ugm-3				V ugm-3	48	V ugm-3	92	V ugm-3
+2016/11/19	184	V ugm-3	124	V ugm-3	24	V ugm-3	66	V ugm-3	23	V ugm-3	46	V ugm-3			172	V ugm-3	428	V ugm-3	55	V ugm-3				V ugm-3	61	V ugm-3	75	V ugm-3
+2016/11/20	113	V ugm-3	58	V ugm-3	24	V ugm-3	68	V ugm-3	25	V ugm-3	31	V ugm-3			72	V ugm-3	230	V ugm-3	39	V ugm-3				V ugm-3	69	V ugm-3	108	V ugm-3
+2016/11/21	202	V ugm-3	93	V ugm-3	27	V ugm-3	96	V ugm-3	26	V ugm-3	46	V ugm-3			140	V ugm-3	296	V ugm-3	64	V ugm-3				V ugm-3	139	V ugm-3	92	V ugm-3
+2016/11/22	123	V ugm-3	89	V ugm-3	21	V ugm-3	53	V ugm-3	13	V ugm-3	32	V ugm-3			185	V ugm-3	424	V ugm-3	38	V ugm-3				V ugm-3	39	V ugm-3	49	V ugm-3
+2016/11/23	261	V ugm-3	127	V ugm-3	57	V ugm-3	139	V ugm-3	49	V ugm-3	60	V ugm-3		V ugm-3	97	V ugm-3	151	V ugm-3	83	V ugm-3				V ugm-3	259	V ugm-3	219	V ugm-3
+2016/11/24	98	V ugm-3	58	V ugm-3	13	V ugm-3	76	V ugm-3	14	V ugm-3	17	V ugm-3	26	V ugm-3	26	V ugm-3	61	V ugm-3	27	V ugm-3				V ugm-3	124	V ugm-3	119	V ugm-3
+2016/11/25	110	V ugm-3	88	V ugm-3	20	V ugm-3	82	V ugm-3	24	V ugm-3	28	V ugm-3	38	V ugm-3	37	V ugm-3	77	V ugm-3	36	V ugm-3				V ugm-3	168	V ugm-3	153	V ugm-3
+2016/11/26	211	V ugm-3	107	V ugm-3	88	V ugm-3	106	V ugm-3	44	V ugm-3	45	V ugm-3	58	V ugm-3	44	V ugm-3	133	V ugm-3	62	V ugm-3				V ugm-3	239	V ugm-3	213	V ugm-3
+2016/11/27	140	V ugm-3	71	V ugm-3	21	V ugm-3	73	V ugm-3	16	V ugm-3	24	V ugm-3	34	V ugm-3	26	V ugm-3	72	V ugm-3	34	V ugm-3				V ugm-3	129	V ugm-3	146	V ugm-3
+2016/11/28	210	V ugm-3	90	V ugm-3	37	V ugm-3	102	V ugm-3	35	V ugm-3	51	V ugm-3	70	V ugm-3	87	V ugm-3	237	V ugm-3	64	V ugm-3				V ugm-3	189	V ugm-3	180	V ugm-3
+2016/11/29	431	V ugm-3	280	V ugm-3	223	V ugm-3	221	V ugm-3	176	V ugm-3	214	V ugm-3	338	V ugm-3	327	V ugm-3	413	V ugm-3	247	V ugm-3				V ugm-3	506	V ugm-3	400	V ugm-3
+2016/11/30	686	V ugm-3	397	V ugm-3	215	V ugm-3	474	V ugm-3	296	V ugm-3	294	V ugm-3	435	V ugm-3	526	V ugm-3	1135	V ugm-3	581	V ugm-3				V ugm-3	450	V ugm-3	585	V ugm-3
+2016/12/1	443	V ugm-3	274	V ugm-3	169	V ugm-3	294	V ugm-3	189	V ugm-3	194	V ugm-3	298	V ugm-3	292	V ugm-3	859	V ugm-3	341	V ugm-3				V ugm-3	277	V ugm-3	420	V ugm-3`;
+        
+        // Parse data
+        const { dates, stations: stationsChart, stationData: stationDataChart } = parseData(rawData);
+        
+        // Set station colors for chart
+        const colors = [
+            '#4a6491', '#ff6b6b', '#51cf66', '#ff922b', '#339af0',
+            '#cc5de8', '#20c997', '#f76707', '#5c7cfa', '#e64980',
+            '#82c91e', '#12b886', '#fab005', '#748ffc'
+        ];
+        
+        // Initialize Chart.js chart
+        let chart;
+        const ctx = document.getElementById('pollutionChart').getContext('2d');
+        
+        // Generate station selector
+        const stationSelector = document.querySelector('.station-selector');
+        stationsChart.forEach((station, index) => {
+            const checkboxId = `station-${index}`;
+            const checkbox = document.createElement('div');
+            checkbox.className = 'station-checkbox';
+            checkbox.innerHTML = `
+                <input type="checkbox" id="${checkboxId}" checked>
+                <label for="${checkboxId}" style="color: ${colors[index]}">${station}</label>
+            `;
+            stationSelector.appendChild(checkbox);
+            
+            // Add event listener
+            document.getElementById(checkboxId).addEventListener('change', updateChart);
+        });
+        
+        // Generate legend
+        const chartLegend = document.getElementById('chartLegend');
+        stationsChart.forEach((station, index) => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <div class="legend-color" style="background-color: ${colors[index]}"></div>
+                ${station}
+            `;
+            chartLegend.appendChild(legendItem);
+        });
+        
+        // Update data summary
+        document.getElementById('dateRange').textContent = `${dates[0]} to ${dates[dates.length-1]}`;
+        document.getElementById('stationCount').textContent = `${stationsChart.length} Stations`;
+        
+        // Calculate maximum concentration
+        let maxValue = 0;
+        stationDataChart.forEach(data => {
+            data.forEach(value => {
+                if (value !== null && value > maxValue) {
+                    maxValue = value;
+                }
+            });
+        });
+        document.getElementById('maxValue').textContent = `${maxValue} μg/m³`;
+        document.getElementById('totalDays').textContent = `${dates.length} Days`;
+        
+        // Create chart
+        function createChart() {
+            const selectedStations = getSelectedStations();
+            
+            // Prepare datasets
+            const datasets = selectedStations.map((stationIndex, datasetIndex) => {
+                // Get raw data
+                let dataValues = stationDataChart[stationIndex];
+                
+                // Apply data aggregation
+                dataValues = aggregateData(dataValues, dates);
+                
+                // Create dataset
+                return {
+                    label: stationsChart[stationIndex],
+                    data: dataValues.map((value, index) => ({
+                        x: moment(dates[index], 'YYYY/M/D').toDate(),
+                        y: value
+                    })),
+                    borderColor: colors[stationIndex],
+                    backgroundColor: colors[stationIndex] + '20',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    fill: false,
+                    tension: 0.1
+                };
+            });
+            
+            // Destroy existing chart
+            if (chart) {
+                chart.destroy();
+            }
+            
+            // Create new chart
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return moment(tooltipItems[0].parsed.x).format('MMMM D, YYYY');
+                                },
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y !== null ? context.parsed.y : 'No data';
+                                    return `${label}: ${value} μg/m³`;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM YYYY'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Concentration (μg/m³)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    plugins: {
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Apply time range filter
+            applyTimeRangeFilter();
+        }
+        
+        // Get selected stations
+        function getSelectedStations() {
+            const selected = [];
+            stationsChart.forEach((_, index) => {
+                const checkbox = document.getElementById(`station-${index}`);
+                if (checkbox.checked) {
+                    selected.push(index);
+                }
+            });
+            return selected;
+        }
+        
+        // Data aggregation function
+        function aggregateData(dataValues, dates) {
+            const aggregation = document.getElementById('aggregation').value;
+            
+            if (aggregation === 'none' || dataValues.length === 0) {
+                return dataValues;
+            }
+            
+            const aggregatedData = [];
+            const dateObjects = dates.map(d => moment(d, 'YYYY/M/D'));
+            
+            if (aggregation === 'weekly') {
+                // Aggregate by week (calculate weekly average)
+                let weekStart = dateObjects[0].clone().startOf('isoWeek');
+                let currentWeekSum = 0;
+                let currentWeekCount = 0;
+                
+                for (let i = 0; i < dataValues.length; i++) {
+                    const currentDate = dateObjects[i];
+                    
+                    // If date belongs to the same week
+                    if (currentDate.isSame(weekStart, 'week')) {
+                        if (dataValues[i] !== null) {
+                            currentWeekSum += dataValues[i];
+                            currentWeekCount++;
+                        }
+                    } else {
+                        // Calculate last week's average
+                        aggregatedData.push(currentWeekCount > 0 ? Math.round(currentWeekSum / currentWeekCount) : null);
+                        
+                        // Reset for new week
+                        weekStart = currentDate.clone().startOf('isoWeek');
+                        currentWeekSum = dataValues[i] !== null ? dataValues[i] : 0;
+                        currentWeekCount = dataValues[i] !== null ? 1 : 0;
+                    }
+                }
+                
+                // Add last week's data
+                aggregatedData.push(currentWeekCount > 0 ? Math.round(currentWeekSum / currentWeekCount) : null);
+                
+            } else if (aggregation === 'monthly') {
+                // Aggregate by month (calculate monthly average)
+                let monthStart = dateObjects[0].clone().startOf('month');
+                let currentMonthSum = 0;
+                let currentMonthCount = 0;
+                
+                for (let i = 0; i < dataValues.length; i++) {
+                    const currentDate = dateObjects[i];
+                    
+                    // If date belongs to the same month
+                    if (currentDate.isSame(monthStart, 'month')) {
+                        if (dataValues[i] !== null) {
+                            currentMonthSum += dataValues[i];
+                            currentMonthCount++;
+                        }
+                    } else {
+                        // Calculate last month's average
+                        aggregatedData.push(currentMonthCount > 0 ? Math.round(currentMonthSum / currentMonthCount) : null);
+                        
+                        // Reset for new month
+                        monthStart = currentDate.clone().startOf('month');
+                        currentMonthSum = dataValues[i] !== null ? dataValues[i] : 0;
+                        currentMonthCount = dataValues[i] !== null ? 1 : 0;
+                    }
+                }
+                
+                // Add last month's data
+                aggregatedData.push(currentMonthCount > 0 ? Math.round(currentMonthSum / currentMonthCount) : null);
+            }
+            
+            return aggregatedData;
+        }
+        
+        // Apply time range filter
+        function applyTimeRangeFilter() {
+            if (!chart) return;
+            
+            const timeRange = document.getElementById('timeRange').value;
+            const xScale = chart.scales.x;
+            
+            if (timeRange === 'all') {
+                // Show all data
+                xScale.options.min = undefined;
+                xScale.options.max = undefined;
+            } else if (timeRange === '3m') {
+                // Show last 3 months
+                const endDate = moment(dates[dates.length-1], 'YYYY/M/D');
+                const startDate = endDate.clone().subtract(3, 'months');
+                xScale.options.min = startDate.toDate();
+                xScale.options.max = endDate.toDate();
+            } else if (timeRange === '6m') {
+                // Show last 6 months
+                const endDate = moment(dates[dates.length-1], 'YYYY/M/D');
+                const startDate = endDate.clone().subtract(6, 'months');
+                xScale.options.min = startDate.toDate();
+                xScale.options.max = endDate.toDate();
+            } else if (timeRange === 'year') {
+                // Show year 2016
+                const startDate = moment('2016-01-01');
+                const endDate = moment('2016-12-31');
+                xScale.options.min = startDate.toDate();
+                xScale.options.max = endDate.toDate();
+            } else {
+                // Show specific month
+                const [year, month] = timeRange.split('-');
+                const startDate = moment(`${year}-${month}-01`);
+                const endDate = startDate.clone().endOf('month');
+                xScale.options.min = startDate.toDate();
+                xScale.options.max = endDate.toDate();
+            }
+            
+            chart.update();
+        }
+        
+        // Update chart
+        function updateChart() {
+            createChart();
+        }
+        
+        // Initialize chart
+        createChart();
+        
+        // Add event listeners
+        document.getElementById('timeRange').addEventListener('change', applyTimeRangeFilter);
+        document.getElementById('aggregation').addEventListener('change', updateChart);
+        document.getElementById('resetZoom').addEventListener('click', function() {
+            if (chart) {
+                chart.resetZoom();
+            }
+        });
+        
+        // ==================== BUBBLE MAP FUNCTIONALITY ====================
+        
+        // Calculate annual averages for each station
+        function calculateAnnualAverages() {
+            const annualAverages = [];
+            
+            stationDataChart.forEach((stationData, index) => {
+                // Filter out null values and calculate average
+                const validValues = stationData.filter(value => value !== null);
+                
+                if (validValues.length > 0) {
+                    const sum = validValues.reduce((total, value) => total + value, 0);
+                    const average = Math.round(sum / validValues.length);
+                    annualAverages.push({
+                        station: stationsChart[index],
+                        average: average,
+                        index: index
+                    });
+                } else {
+                    annualAverages.push({
+                        station: stationsChart[index],
+                        average: 0,
+                        index: index
+                    });
+                }
+            });
+            
+            return annualAverages;
+        }
+        
+        // Initialize bubble map
+        const bubbleMap = L.map('bubble-map').setView([51.5074, -0.1278], 11);
+        
+        // Add Google Satellite layer (using OpenStreetMap as fallback)
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Map data © Google'
+        }).addTo(bubbleMap);
+        
+        // Calculate annual averages
+        const annualAverages = calculateAnnualAverages();
+        
+        // Find min and max values for scaling
+        const minAverage = Math.min(...annualAverages.map(item => item.average));
+        const maxAverage = Math.max(...annualAverages.map(item => item.average));
+        
+        // Function to get bubble size based on average concentration
+        function getBubbleSize(average) {
+            // Scale the bubble size between 15 and 40 based on average concentration
+            const minSize = 15;
+            const maxSize = 40;
+            
+            if (maxAverage === minAverage) return (minSize + maxSize) / 2;
+            
+            return minSize + ((average - minAverage) / (maxAverage - minAverage)) * (maxSize - minSize);
+        }
+        
+        // Function to get bubble color based on average concentration
+        function getBubbleColor(average) {
+            // Use a color gradient from blue (low) to red (high)
+            const normalized = (average - minAverage) / (maxAverage - minAverage);
+            
+            // Create a gradient from blue to red
+            if (normalized < 0.5) {
+                // Blue to yellow
+                const r = Math.round(51 + (204 * normalized * 2));
+                const g = Math.round(153 + (102 * normalized * 2));
+                const b = Math.round(255 - (255 * normalized * 2));
+                return `rgba(${r}, ${g}, ${b}, 0.7)`;
+            } else {
+                // Yellow to red
+                const r = Math.round(255 - (102 * (1 - normalized) * 2));
+                const g = Math.round(255 - (255 * (1 - normalized) * 2));
+                const b = Math.round(0);
+                return `rgba(${r}, ${g}, ${b}, 0.7)`;
+            }
+        }
+        
+        // Create bubble layer
+        const bubbleLayer = L.layerGroup().addTo(bubbleMap);
+        
+        // Add bubbles for each station with data
+        annualAverages.forEach((item) => {
+            // Find station location from stationData
+            const stationIndex = stationData.findIndex(station => 
+                station.name.includes(item.station.split(' ')[1]) || 
+                station.name === item.station
+            );
+            
+            if (stationIndex !== -1 && item.average > 0) {
+                const station = stationData[stationIndex];
+                const bubbleSize = getBubbleSize(item.average);
+                const bubbleColor = getBubbleColor(item.average);
+                
+                // Create circle marker (bubble)
+                const bubble = L.circleMarker([station.lat, station.lng], {
+                    radius: bubbleSize,
+                    fillColor: bubbleColor,
+                    color: '#333',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.7
+                }).addTo(bubbleLayer);
+                
+                // Add tooltip
+                bubble.bindTooltip(`
+                    <div style="font-weight: bold; font-size: 14px;">${item.station}</div>
+                    <div style="font-size: 12px;">Annual Average: ${item.average} μg/m³</div>
+                `, {
+                    direction: 'top',
+                    offset: [0, -bubbleSize/2],
+                    opacity: 0.9,
+                    className: 'bubble-tooltip'
+                });
+                
+                // Add click event
+                bubble.on('click', function() {
+                    selectBubbleStation(stationIndex, item.average);
+                    bubbleMap.setView([station.lat, station.lng], 14);
+                });
+            }
+        });
+        
+        // Generate bubble station list
+        const bubbleStationList = document.getElementById('bubble-station-list');
+        const bubbleStationDetails = document.getElementById('bubble-station-details');
+        
+        annualAverages.forEach((item, index) => {
+            // Find station location from stationData
+            const stationIndex = stationData.findIndex(station => 
+                station.name.includes(item.station.split(' ')[1]) || 
+                station.name === item.station
+            );
+            
+            if (stationIndex !== -1) {
+                const station = stationData[stationIndex];
+                const config = typeConfig[station.type];
+                const bubbleSize = getBubbleSize(item.average);
+                const bubbleColor = getBubbleColor(item.average);
+                
+                const stationItem = document.createElement('div');
+                stationItem.className = 'station-item';
+                stationItem.dataset.index = stationIndex;
+                stationItem.dataset.average = item.average;
+                
+                stationItem.innerHTML = `
+                    <div class="station-info">
+                        <div class="station-name">${station.name}</div>
+                        <div class="station-type">
+                            <i class="fas ${config.icon}"></i>
+                            <span>${config.name}</span>
+                        </div>
+                        <div class="station-coords">Annual Avg: ${item.average} μg/m³</div>
+                    </div>
+                    <div class="station-icon">
+                        <div style="
+                            width: ${bubbleSize}px; 
+                            height: ${bubbleSize}px; 
+                            border-radius: 50%; 
+                            background-color: ${bubbleColor}; 
+                            border: 2px solid white; 
+                            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+                        "></div>
+                    </div>
+                `;
+                
+                // Add click event to list item
+                stationItem.addEventListener('click', function() {
+                    selectBubbleStation(stationIndex, item.average);
+                    bubbleMap.setView([station.lat, station.lng], 14);
+                });
+                
+                bubbleStationList.appendChild(stationItem);
+            }
+        });
+        
+        // Function to select a bubble station
+        function selectBubbleStation(stationIndex, annualAverage) {
+            const station = stationData[stationIndex];
+            const config = typeConfig[station.type];
+            
+            // Update bubble station details panel
+            document.getElementById('bubble-selected-station-name').textContent = station.name;
+            document.getElementById('bubble-selected-station-type').textContent = config.name;
+            document.getElementById('bubble-selected-station-type').style.backgroundColor = config.color;
+            document.getElementById('bubble-station-coordinates').textContent = `${station.lat.toFixed(6)}° N, ${station.lng.toFixed(6)}° W`;
+            document.getElementById('bubble-station-type').textContent = config.name;
+            document.getElementById('annual-average').textContent = `${annualAverage} μg/m³`;
+            document.getElementById('bubble-station-elevation').textContent = station.elevation;
+            document.getElementById('bubble-station-description').textContent = station.description;
+            
+            // Show details panel
+            bubbleStationDetails.classList.add('active');
+            
+            // Update active state in list
+            const allItems = document.querySelectorAll('#bubble-station-list .station-item');
+            allItems.forEach(item => item.classList.remove('active'));
+            const selectedItem = document.querySelector(`#bubble-station-list .station-item[data-index="${stationIndex}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('active');
+            }
+            
+            // Highlight the corresponding bubble (if we had a reference to it)
+            // For now, we'll just center the map on it
+        }
+        
+        // Add scale control to bubble map
+        L.control.scale().addTo(bubbleMap);
+        
+        // Select the first station by default for bubble map
+        if (annualAverages.length > 0) {
+            const firstStationIndex = stationData.findIndex(station => 
+                station.name.includes(annualAverages[0].station.split(' ')[1]) || 
+                station.name === annualAverages[0].station
+            );
+            
+            if (firstStationIndex !== -1) {
+                selectBubbleStation(firstStationIndex, annualAverages[0].average);
+            }
+        }
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + number keys toggle station display
+            if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+                const index = parseInt(e.key) - 1;
+                if (index < stationsChart.length) {
+                    const checkbox = document.getElementById(`station-${index}`);
+                    checkbox.checked = !checkbox.checked;
+                    updateChart();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
